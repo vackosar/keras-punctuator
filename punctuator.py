@@ -5,10 +5,12 @@ http://nlp.stanford.edu/data/glove.6B.zip
 '''
 
 from __future__ import print_function
+
 import os
 import re
 
 import numpy as np
+
 np.random.seed(1337)
 
 from keras.preprocessing.text import Tokenizer
@@ -68,7 +70,47 @@ def cleanData():
                 if len(line) == 0:
                     continue
                 output.write(line + " ")
-cleanData()
+#cleanData()
+
+def sampleData():
+    import itertools
+    WORDS_PER_SAMPLE_SIZE = 20
+
+    def readwords(mfile):
+        byte_stream = itertools.groupby(
+            itertools.takewhile(lambda c: bool(c),
+                                map(mfile.read,
+                                               itertools.repeat(1))), str.isspace)
+
+        return ("".join(group) for pred, group in byte_stream if not pred)
+
+    def isMovingWindow(step):
+        return step % 3 != 0
+
+    with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'w', encoding="utf8") as output:
+        with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'r', encoding="utf8") as input:
+            window = []
+            step = 0
+            dotLike = re.compile('.*[,\.?!]')
+            for word in readwords(input):
+                if len(window) < WORDS_PER_SAMPLE_SIZE:
+                    window.append(word)
+                    continue
+                step += 1
+                if isMovingWindow(step):
+                    window.append(word)
+                    window.pop(0)
+                    continue
+                label = WORDS_PER_SAMPLE_SIZE
+                for index, queued in enumerate(window):
+                    if dotLike.match(queued) is not None:
+                        label = index
+                output.write(' '.join(window))
+                output.write(' ' + str(label))
+                output.write('\n')
+
+sampleData()
+
 
 # # second, prepare text samples and their labels
 # print('Processing text dataset')
