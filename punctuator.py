@@ -16,7 +16,7 @@ np.random.seed(1337)
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils.np_utils import to_categorical
-from keras.layers import Dense, Input, Flatten
+from keras.layers import Dense, Input, Flatten, Dropout
 from keras.layers import Conv1D, MaxPooling1D, Embedding
 from keras.models import Model
 import sys
@@ -24,8 +24,8 @@ import sys
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
-WORDS_PER_SAMPLE_SIZE = 20
-LABELS_COUNT = 21
+WORDS_PER_SAMPLE_SIZE = 30
+LABELS_COUNT = WORDS_PER_SAMPLE_SIZE + 1
 MAX_NB_WORDS = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
@@ -62,6 +62,11 @@ def cleanData():
 def sampleData():
     import itertools
 
+
+    NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
+    SAMPLE_COUNT = 1000000
+    MOVE_SIZE = 10
+
     def readwords(mfile):
         byte_stream = itertools.groupby(
             itertools.takewhile(lambda c: bool(c),
@@ -71,10 +76,8 @@ def sampleData():
         return ("".join(group) for pred, group in byte_stream if not pred)
 
     def isMovingWindow(step):
-        return step % 3 != 0
+        return step % MOVE_SIZE != 0
 
-    NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
-    SAMPLE_COUNT = 200000
     samples = []
     labels = []
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'w', encoding="utf8") as output:
@@ -182,11 +185,16 @@ def trainModel(embedding_layer, x_train, y_train, x_val, y_val):
     print('Training model.')
     # train a 1D convnet with global maxpooling
     sequence_input = Input(shape=(WORDS_PER_SAMPLE_SIZE,), dtype='int32')
-    embedded_sequences = embedding_layer(sequence_input)
-    x = Conv1D(128, 5, activation='relu')(embedded_sequences)
-    x = MaxPooling1D(5)(x)
+    x = embedding_layer(sequence_input)
+    x = Conv1D(LABELS_COUNT*2, 10, activation='relu')(x)
+    # x = MaxPooling1D(5)(x)
+    # x = Dense(LABELS_COUNT*2, activation='relu')(x)
+    x = Dropout(0.25)(x)
+    # x = Dense(LABELS_COUNT*2, activation='relu')(x)
+    # x = Dropout(0.25)(x)
+    x = Dense(LABELS_COUNT*2, activation='relu')(x)
+    x = Dropout(0.25)(x)
     x = Flatten()(x)
-    x = Dense(128, activation='relu')(x)
     preds = Dense(LABELS_COUNT, activation='softmax')(x)
 
     model = Model(sequence_input, preds)
@@ -197,6 +205,7 @@ def trainModel(embedding_layer, x_train, y_train, x_val, y_val):
     # happy learning!
     model.fit(x_train, y_train, validation_data=(x_val, y_val),
               nb_epoch=10, batch_size=128)
+
 
 
 def main():
