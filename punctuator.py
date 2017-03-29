@@ -24,8 +24,8 @@ import sys
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
-MAX_SEQUENCE_LENGTH = 1000
 WORDS_PER_SAMPLE_SIZE = 20
+LABELS_COUNT = 21
 MAX_NB_WORDS = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
@@ -73,6 +73,8 @@ def sampleData():
     def isMovingWindow(step):
         return step % 3 != 0
 
+    NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
+    SAMPLE_COUNT = 50000
     samples = []
     labels = []
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'w', encoding="utf8") as output:
@@ -84,19 +86,22 @@ def sampleData():
                 if len(window) < WORDS_PER_SAMPLE_SIZE:
                     window.append(word)
                     continue
+                if step > SAMPLE_COUNT:
+                    break
                 step += 1
                 if isMovingWindow(step):
                     window.append(word)
                     window.pop(0)
                     continue
-                label = WORDS_PER_SAMPLE_SIZE
+                label = NO_DOT_LIKE_LABEL
                 for index, queued in enumerate(window):
                     if dotLike.match(queued) is not None:
                         label = index
-                samples.append(window)
+                sample = ' '.join(window)
+                samples.append(sample)
                 labels.append(label)
                 if SAVE_SAMPLED:
-                    output.write(' '.join(window))
+                    output.write(sample)
                     output.write(' ' + str(label))
                     output.write('\n')
     return labels, samples
@@ -106,17 +111,17 @@ def tokenize(labels, samples):
     tokenizer = Tokenizer(nb_words=MAX_NB_WORDS)
     tokenizer.fit_on_texts(samples)
     tokenized_samples = tokenizer.texts_to_sequences(samples)
+    padded_samples = pad_sequences(tokenized_samples, maxlen=WORDS_PER_SAMPLE_SIZE)
 
     word_index = tokenizer.word_index
     print('Found %s unique tokens.' % len(word_index))
 
     tokenized_labels = to_categorical(np.asarray(labels))
-    # padded_sequences = pad_sequences(sequences, maxlen=WORDS_PER_SAMPLE_SIZE)
 
-    # print('Shape of data tensor:', data.shape)
-    # print('Shape of label tensor:', labels.shape)
+    print('Shape of padded_samples tensor:', padded_samples.shape)
+    print('Shape of tokenized_labels tensor:', tokenized_labels.shape)
 
-    return tokenized_labels, tokenized_samples, word_index
+    return tokenized_labels, padded_samples, word_index
 
 
 # split the data into a training set and a validation set
@@ -154,7 +159,7 @@ def prepareEmbeddingMatrix(word_index, embeddings_index, nb_words):
     # prepare embedding matrix
     embedding_matrix = np.zeros((nb_words, EMBEDDING_DIM))
     for word, i in word_index.items():
-        if i >= MAX_NB_WORDS:
+        if i >= nb_words:
             continue
         embedding_vector = embeddings_index.get(word)
         if embedding_vector is not None:
@@ -187,7 +192,7 @@ def trainModel(embedding_layer, x_train, y_train, x_val, y_val):
     x = MaxPooling1D(35)(x)
     x = Flatten()(x)
     x = Dense(128, activation='relu')(x)
-    preds = Dense(WORDS_PER_SAMPLE_SIZE, activation='softmax')(x)
+    preds = Dense(LABELS_COUNT, activation='softmax')(x)
 
     model = Model(sequence_input, preds)
     model.compile(loss='categorical_crossentropy',
