@@ -171,12 +171,11 @@ def prepareEmbeddingMatrix(word_index, embeddings_index, nb_words):
 # load pre-trained word embeddings into an Embedding layer
 # note that we set trainable = False so as to keep the embeddings fixed
 def createEmbeddingLayer(nb_words, embedding_matrix):
-    embedding_layer = Embedding(nb_words,
+    return Embedding(nb_words,
                                 EMBEDDING_DIM,
                                 weights=[embedding_matrix],
                                 input_length=WORDS_PER_SAMPLE_SIZE,
                                 trainable=False)
-    return embedding_layer
 
 
 def trainModel(embedding_layer, x_train, y_train, x_val, y_val):
