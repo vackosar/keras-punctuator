@@ -24,7 +24,7 @@ import sys
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
-WORDS_PER_SAMPLE_SIZE = 30
+WORDS_PER_SAMPLE_SIZE = 15
 LABELS_COUNT = WORDS_PER_SAMPLE_SIZE + 1
 MAX_NB_WORDS = 20000
 EMBEDDING_DIM = 100
@@ -64,8 +64,8 @@ def sampleData():
 
 
     NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
-    SAMPLE_COUNT = 1000000
-    MOVE_SIZE = 10
+    SAMPLE_COUNT = 10000000
+    MOVE_SIZE = 15
 
     def readwords(mfile):
         byte_stream = itertools.groupby(
@@ -78,8 +78,6 @@ def sampleData():
     def isMovingWindow(step):
         return step % MOVE_SIZE != 0
 
-    samples = []
-    labels = []
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'r', encoding="utf8") as input:
             window = []
@@ -100,14 +98,21 @@ def sampleData():
                 for index, queued in enumerate(window):
                     if dotLike.match(queued) is not None:
                         label = index
-                sample = ' '.join(window)
-                samples.append(sample)
-                labels.append(label)
-                if SAVE_SAMPLED:
-                    output.write(sample)
-                    output.write(' ' + str(label))
-                    output.write('\n')
-    return labels, samples
+                output.write(' '.join(window))
+                output.write(' ' + str(label))
+                output.write('\n')
+
+
+def loadSamples():
+    with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'r', encoding="utf8") as input:
+        samples = []
+        labels = []
+        for fullLine in input:
+            line = fullLine.rstrip()
+            split = line.split(' ')
+            samples.append(''.join(split[:-1]))
+            labels.append(int(split[-1]))
+        return labels, samples
 
 
 def tokenize(labels, samples):
@@ -124,7 +129,7 @@ def tokenize(labels, samples):
     print('Shape of padded_samples tensor:', padded_samples.shape)
     print('Shape of tokenized_labels tensor:', tokenized_labels.shape)
 
-    return tokenized_labels, padded_samples, word_index
+    return tokenized_labels, padded_samples, tokenizer
 
 
 # split the data into a training set and a validation set
@@ -186,37 +191,45 @@ def trainModel(embedding_layer, x_train, y_train, x_val, y_val):
     # train a 1D convnet with global maxpooling
     sequence_input = Input(shape=(WORDS_PER_SAMPLE_SIZE,), dtype='int32')
     x = embedding_layer(sequence_input)
-    x = Conv1D(LABELS_COUNT*2, 10, activation='relu')(x)
+    # x = Conv1D(LABELS_COUNT*2, 10, activation='relu')(x)
     # x = MaxPooling1D(5)(x)
-    # x = Dense(LABELS_COUNT*2, activation='relu')(x)
-    x = Dropout(0.25)(x)
+    x = Dense(LABELS_COUNT*3, activation='relu')(x)
+    x = Dropout(0.2)(x)
     # x = Dense(LABELS_COUNT*2, activation='relu')(x)
     # x = Dropout(0.25)(x)
-    x = Dense(LABELS_COUNT*2, activation='relu')(x)
-    x = Dropout(0.25)(x)
+    x = Dense(LABELS_COUNT*3, activation='relu')(x)
+    x = Dropout(0.2)(x)
+
+    x = Dense(LABELS_COUNT*3, activation='relu')(x)
+    x = Dropout(0.2)(x)
+
     x = Flatten()(x)
     preds = Dense(LABELS_COUNT, activation='softmax')(x)
 
     model = Model(sequence_input, preds)
-    model.compile(loss='categorical_crossentropy',
-                  optimizer='rmsprop',
-                  metrics=['acc'])
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
 
     # happy learning!
-    model.fit(x_train, y_train, validation_data=(x_val, y_val),
-              nb_epoch=10, batch_size=128)
+    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=3, batch_size=128)
+    return model
+
+
+def customTest(tokenizer, model):
+    sample = 'Hello, I am Donald. I love beer.'
+    preds = model.predict_classes(rowX, verbose=0)
+    print(preds[0]);
 
 
 
 def main():
     # cleanData()
-    sampleData()
-    labels, samples = sampleData()
-    tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
+    # sampleData()
+    labels, samples = loadSamples()
+    tokenized_labels, tokenized_samples, tokenizer = tokenize(labels, samples)
     x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
     embeddings_index = indexEmbeddingWordVectors()
-    nb_words = min(MAX_NB_WORDS, len(word_index))
-    embedding_matrix = prepareEmbeddingMatrix(word_index, embeddings_index, nb_words)
+    nb_words = min(MAX_NB_WORDS, len(tokenizer.word_index))
+    embedding_matrix = prepareEmbeddingMatrix(tokenizer.word_index, embeddings_index, nb_words)
     embedding_layer = createEmbeddingLayer(nb_words, embedding_matrix)
     trainModel(embedding_layer, x_train, y_train, x_val, y_val)
 
