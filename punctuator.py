@@ -25,9 +25,11 @@ BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
 MAX_SEQUENCE_LENGTH = 1000
+WORDS_PER_SAMPLE_SIZE = 20
 MAX_NB_WORDS = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
+SAVE_SAMPLED = False
 
 # cat europarl-v7.en.clean.txt |grep -o '[,\.!?]'|wc -l
 # 5102642
@@ -45,7 +47,8 @@ VOCAB_SIZE = 8192
 # Clean and label data
 
 def cleanData():
-    toDelete = re.compile('.*Resumption of the session.*|.*VOTE.*|^Agenda$|.*report[ ]*$|^$|^\.$|([^)]*)|[^a-z0-9A-Z\',\.?! ]')
+    toDelete = re.compile(
+        '.*Resumption of the session.*|.*VOTE.*|^Agenda$|.*report[ ]*$|^$|^\.$|([^)]*)|[^a-z0-9A-Z\',\.?! ]')
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/europarl-v7.en", encoding="utf8") as input:
             for fullLine in input:
@@ -58,19 +61,20 @@ def cleanData():
 
 def sampleData():
     import itertools
-    WORDS_PER_SAMPLE_SIZE = 20
 
     def readwords(mfile):
         byte_stream = itertools.groupby(
             itertools.takewhile(lambda c: bool(c),
                                 map(mfile.read,
-                                               itertools.repeat(1))), str.isspace)
+                                    itertools.repeat(1))), str.isspace)
 
         return ("".join(group) for pred, group in byte_stream if not pred)
 
     def isMovingWindow(step):
         return step % 3 != 0
 
+    samples = []
+    labels = []
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'r', encoding="utf8") as input:
             window = []
@@ -89,52 +93,31 @@ def sampleData():
                 for index, queued in enumerate(window):
                     if dotLike.match(queued) is not None:
                         label = index
-                output.write(' '.join(window))
-                output.write(' ' + str(label))
-                output.write('\n')
+                samples.append(window)
+                labels.append(label)
+                if SAVE_SAMPLED:
+                    output.write(' '.join(window))
+                    output.write(' ' + str(label))
+                    output.write('\n')
+    return labels, samples
 
 
-def prepSamplesOriginal():
-    print('Preparing text samples and their labels')
-
-    texts = []  # list of text samples
-    labels_index = {}  # dictionary mapping label name to numeric id
-    labels = []  # list of label ids
-    for name in sorted(os.listdir(TEXT_DATA_DIR)):
-        path = os.path.join(TEXT_DATA_DIR, name)
-        if os.path.isdir(path):
-            label_id = len(labels_index)
-            labels_index[name] = label_id
-            for fname in sorted(os.listdir(path)):
-                if fname.isdigit():
-                    fpath = os.path.join(path, fname)
-                    if sys.version_info < (3,):
-                        f = open(fpath)
-                    else:
-                        f = open(fpath, encoding='latin-1')
-                    texts.append(f.read())
-                    f.close()
-                    labels.append(label_id)
-
-    print('Found %s texts.' % len(texts))
-    return labels, labels_index, texts
-
-
-def tokenize(labels, texts):
+def tokenize(labels, samples):
     tokenizer = Tokenizer(nb_words=MAX_NB_WORDS)
-    tokenizer.fit_on_texts(texts)
-    sequences = tokenizer.texts_to_sequences(texts)
+    tokenizer.fit_on_texts(samples)
+    tokenized_samples = tokenizer.texts_to_sequences(samples)
 
     word_index = tokenizer.word_index
     print('Found %s unique tokens.' % len(word_index))
 
-    labels = to_categorical(np.asarray(labels))
-    data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
+    tokenized_labels = to_categorical(np.asarray(labels))
+    # padded_sequences = pad_sequences(sequences, maxlen=WORDS_PER_SAMPLE_SIZE)
 
     # print('Shape of data tensor:', data.shape)
     # print('Shape of label tensor:', labels.shape)
 
-    return labels, data, word_index
+    return tokenized_labels, tokenized_samples, word_index
+
 
 # split the data into a training set and a validation set
 def splitTrainingAndValidation(labels, data):
@@ -150,6 +133,7 @@ def splitTrainingAndValidation(labels, data):
     y_val = labels[-nb_validation_samples:]
     return x_train, y_train, x_val, y_val
 
+
 def indexEmbeddingWordVectors():
     # first, build index mapping words in the embeddings set
     # to their embedding vector
@@ -162,8 +146,10 @@ def indexEmbeddingWordVectors():
             coefs = np.asarray(values[1:], dtype='float32')
             embeddings_index[word] = coefs
     print('Found %s word vectors.' % len(embeddings_index))
+    return embeddings_index
 
-def prepareEmbeddingMatrix(word_index):
+
+def prepareEmbeddingMatrix(word_index, embeddings_index, nb_words):
     print('Preparing embedding matrix.')
     # prepare embedding matrix
     embedding_matrix = np.zeros((nb_words, EMBEDDING_DIM))
@@ -174,6 +160,8 @@ def prepareEmbeddingMatrix(word_index):
         if embedding_vector is not None:
             # words not found in embedding index will be all-zeros.
             embedding_matrix[i] = embedding_vector
+    return embedding_matrix
+
 
 # load pre-trained word embeddings into an Embedding layer
 # note that we set trainable = False so as to keep the embeddings fixed
@@ -181,14 +169,15 @@ def createEmbeddingLayer(nb_words, embedding_matrix):
     embedding_layer = Embedding(nb_words,
                                 EMBEDDING_DIM,
                                 weights=[embedding_matrix],
-                                input_length=MAX_SEQUENCE_LENGTH,
+                                input_length=WORDS_PER_SAMPLE_SIZE,
                                 trainable=False)
     return embedding_layer
 
-def trainModel(embedding_layer, labels_index):
+
+def trainModel(embedding_layer, x_train, y_train, x_val, y_val):
     print('Training model.')
     # train a 1D convnet with global maxpooling
-    sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
+    sequence_input = Input(shape=(WORDS_PER_SAMPLE_SIZE,), dtype='int32')
     embedded_sequences = embedding_layer(sequence_input)
     x = Conv1D(128, 5, activation='relu')(embedded_sequences)
     x = MaxPooling1D(5)(x)
@@ -198,7 +187,7 @@ def trainModel(embedding_layer, labels_index):
     x = MaxPooling1D(35)(x)
     x = Flatten()(x)
     x = Dense(128, activation='relu')(x)
-    preds = Dense(len(labels_index), activation='softmax')(x)
+    preds = Dense(WORDS_PER_SAMPLE_SIZE, activation='softmax')(x)
 
     model = Model(sequence_input, preds)
     model.compile(loss='categorical_crossentropy',
@@ -210,13 +199,17 @@ def trainModel(embedding_layer, labels_index):
               nb_epoch=5, batch_size=128)
 
 
-# cleanData()
-sampleData()
-labels, labels_index, texts = prepSamplesOriginal()
-labels, data, word_index = tokenize(labels, texts)
-x_train, y_train, x_val, y_val = splitTrainingAndValidation(labels, data)
-embeddings_index = indexEmbeddingWordVectors()
-nb_words = min(MAX_NB_WORDS, len(word_index))
-embedding_matrix = prepareEmbeddingMatrix(word_index)
-embedding_layer = createEmbeddingLayer(nb_words, embedding_matrix)
-trainModel(embedding_layer, labels_index)
+def main():
+    # cleanData()
+    sampleData()
+    labels, samples = sampleData()
+    tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
+    x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
+    embeddings_index = indexEmbeddingWordVectors()
+    nb_words = min(MAX_NB_WORDS, len(word_index))
+    embedding_matrix = prepareEmbeddingMatrix(word_index, embeddings_index, nb_words)
+    embedding_layer = createEmbeddingLayer(nb_words, embedding_matrix)
+    trainModel(embedding_layer, x_train, y_train, x_val, y_val)
+
+
+main()
