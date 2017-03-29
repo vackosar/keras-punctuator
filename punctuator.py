@@ -24,7 +24,7 @@ import sys
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
-WORDS_PER_SAMPLE_SIZE = 30
+WORDS_PER_SAMPLE_SIZE = 20
 LABELS_COUNT = WORDS_PER_SAMPLE_SIZE + 1
 MAX_NB_WORDS = 20000
 EMBEDDING_DIM = 100
@@ -62,10 +62,9 @@ def cleanData():
 def sampleData():
     import itertools
 
-
     NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
     SAMPLE_COUNT = 10000000
-    MOVE_SIZE = WORDS_PER_SAMPLE_SIZE
+    MOVE_SIZE = int(WORDS_PER_SAMPLE_SIZE / 3)
 
     def readwords(mfile):
         byte_stream = itertools.groupby(
@@ -110,7 +109,7 @@ def loadSamples():
         for fullLine in input:
             line = fullLine.rstrip()
             split = line.split(' ')
-            samples.append(''.join(split[:-1]))
+            samples.append(' '.join(split[:-1]))
             labels.append(int(split[-1]))
         return labels, samples
 
@@ -186,47 +185,55 @@ def createEmbeddingLayer(nb_words, embedding_matrix):
                                 trainable=False)
 
 
-def trainModel(embedding_layer, x_train, y_train, x_val, y_val):
+def createModel(embedding_layer):
     print('Training model.')
     # train a 1D convnet with global maxpooling
     sequence_input = Input(shape=(WORDS_PER_SAMPLE_SIZE,), dtype='int32')
     x = embedding_layer(sequence_input)
     # x = Conv1D(LABELS_COUNT*2, 10, activation='relu')(x)
     # x = MaxPooling1D(5)(x)
-    x = Dense(LABELS_COUNT*3, activation='relu')(x)
+    x = Dense(LABELS_COUNT*2, activation='relu')(x)
     x = Dropout(0.2)(x)
     # x = Dense(LABELS_COUNT*2, activation='relu')(x)
     # x = Dropout(0.25)(x)
-    x = Dense(LABELS_COUNT*3, activation='relu')(x)
+    x = Dense(LABELS_COUNT*2, activation='relu')(x)
     x = Dropout(0.2)(x)
 
-    x = Dense(LABELS_COUNT*3, activation='relu')(x)
-    x = Dropout(0.2)(x)
+    # x = Dense(LABELS_COUNT*2, activation='relu')(x)
+    # x = Dropout(0.2)(x)
 
     x = Flatten()(x)
     preds = Dense(LABELS_COUNT, activation='softmax')(x)
 
     model = Model(sequence_input, preds)
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
-
-    # happy learning!
-    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=10, batch_size=128)
     return model
 
 
-def customTest(tokenizer, model):
-    sample = 'I wanted to say that in the spring there will be a large beer-tasting session for Bavarian beer in the Parliament courtyard here in Strasbourg. Mr Posselt, I am very pleased, but in any case, I would remind you that, when requesting a procedural motion, you actually have to indicate the Rule to which you are referring. Having said that, Parliament has reached the end of the agenda.'
+def trainModel(model, x_train, y_train, x_val, y_val):
+    # happy learning!
+    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=10, batch_size=128)
+    model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
+    return model
+
+
+def customTest(model, tokenizer, samples):
+    printSampleEvaluation(model, tokenizer, 'Altman was named president of Y Combinator, which funded the startup he co-founded in the first batch of funded companies in 2005.')
+    printSampleEvaluation(model, tokenizer, 'In a 2014 blog post, Altman stated that the total valuation of all Y Combinator companies had surpassed $65 billion, including well-known companies like Airbnb, Dropbox, Zenefits and Stripe.')
+    printSampleEvaluation(model, tokenizer, 'In September 2016 Altman announced that he will be president of YC Group, which includes Y Combinator and other units.')
+    for sample in samples[:30]:
+        printSampleEvaluation(model, tokenizer, sample)
+
+
+def printSampleEvaluation(model, tokenizer, sample):
     tokenized = pad_sequences(tokenizer.texts_to_sequences(sample), maxlen=WORDS_PER_SAMPLE_SIZE)
     preds = list(model.predict(tokenized)[0])
-    print("Maximum should be 25.")
-    print(preds)
     index = preds.index(max(preds))
-    print(index)
     for i, word in enumerate(sample.split(' ')):
+        print(word, end=' ')
         if i == index:
-            print('* ')
-        print(word)
-
+            print(' * ', end='')
+    print('')
 
 
 def main():
@@ -239,8 +246,9 @@ def main():
     nb_words = min(MAX_NB_WORDS, len(tokenizer.word_index))
     embedding_matrix = prepareEmbeddingMatrix(tokenizer.word_index, embeddings_index, nb_words)
     embedding_layer = createEmbeddingLayer(nb_words, embedding_matrix)
-    model = trainModel(embedding_layer, x_train, y_train, x_val, y_val)
-    customTest(tokenizer, model)
+    model = createModel(embedding_layer)
+    trainModel(model, x_train, y_train, x_val, y_val)
+    customTest(model, tokenizer, samples)
 
 
 main()
