@@ -24,7 +24,7 @@ import sys
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
-WORDS_PER_SAMPLE_SIZE = 15
+WORDS_PER_SAMPLE_SIZE = 30
 LABELS_COUNT = WORDS_PER_SAMPLE_SIZE + 1
 MAX_NB_WORDS = 20000
 EMBEDDING_DIM = 100
@@ -65,7 +65,7 @@ def sampleData():
 
     NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
     SAMPLE_COUNT = 10000000
-    MOVE_SIZE = 15
+    MOVE_SIZE = WORDS_PER_SAMPLE_SIZE
 
     def readwords(mfile):
         byte_stream = itertools.groupby(
@@ -133,16 +133,16 @@ def tokenize(labels, samples):
 
 
 # split the data into a training set and a validation set
-def splitTrainingAndValidation(labels, data):
-    indices = np.arange(data.shape[0])
+def splitTrainingAndValidation(labels, samples):
+    indices = np.arange(samples.shape[0])
     np.random.shuffle(indices)
-    data = data[indices]
+    samples = samples[indices]
     labels = labels[indices]
-    nb_validation_samples = int(VALIDATION_SPLIT * data.shape[0])
+    nb_validation_samples = int(VALIDATION_SPLIT * samples.shape[0])
 
-    x_train = data[:-nb_validation_samples]
+    x_train = samples[:-nb_validation_samples]
     y_train = labels[:-nb_validation_samples]
-    x_val = data[-nb_validation_samples:]
+    x_val = samples[-nb_validation_samples:]
     y_val = labels[-nb_validation_samples:]
     return x_train, y_train, x_val, y_val
 
@@ -210,14 +210,22 @@ def trainModel(embedding_layer, x_train, y_train, x_val, y_val):
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
 
     # happy learning!
-    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=3, batch_size=128)
+    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=10, batch_size=128)
     return model
 
 
 def customTest(tokenizer, model):
-    sample = 'Hello, I am Donald. I love beer.'
-    preds = model.predict_classes(rowX, verbose=0)
-    print(preds[0]);
+    sample = 'I wanted to say that in the spring there will be a large beer-tasting session for Bavarian beer in the Parliament courtyard here in Strasbourg. Mr Posselt, I am very pleased, but in any case, I would remind you that, when requesting a procedural motion, you actually have to indicate the Rule to which you are referring. Having said that, Parliament has reached the end of the agenda.'
+    tokenized = pad_sequences(tokenizer.texts_to_sequences(sample), maxlen=WORDS_PER_SAMPLE_SIZE)
+    preds = list(model.predict(tokenized)[0])
+    print("Maximum should be 25.")
+    print(preds)
+    index = preds.index(max(preds))
+    print(index)
+    for i, word in enumerate(sample.split(' ')):
+        if i == index:
+            print('* ')
+        print(word)
 
 
 
@@ -231,7 +239,8 @@ def main():
     nb_words = min(MAX_NB_WORDS, len(tokenizer.word_index))
     embedding_matrix = prepareEmbeddingMatrix(tokenizer.word_index, embeddings_index, nb_words)
     embedding_layer = createEmbeddingLayer(nb_words, embedding_matrix)
-    trainModel(embedding_layer, x_train, y_train, x_val, y_val)
+    model = trainModel(embedding_layer, x_train, y_train, x_val, y_val)
+    customTest(tokenizer, model)
 
 
 main()
