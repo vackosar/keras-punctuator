@@ -74,7 +74,7 @@ def sampleData():
         return step % 3 != 0
 
     NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
-    SAMPLE_COUNT = 50000
+    SAMPLE_COUNT = 200000
     samples = []
     labels = []
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'w', encoding="utf8") as output:
@@ -185,10 +185,6 @@ def trainModel(embedding_layer, x_train, y_train, x_val, y_val):
     embedded_sequences = embedding_layer(sequence_input)
     x = Conv1D(128, 5, activation='relu')(embedded_sequences)
     x = MaxPooling1D(5)(x)
-    x = Conv1D(128, 5, activation='relu')(x)
-    x = MaxPooling1D(5)(x)
-    x = Conv1D(128, 5, activation='relu')(x)
-    x = MaxPooling1D(35)(x)
     x = Flatten()(x)
     x = Dense(128, activation='relu')(x)
     preds = Dense(LABELS_COUNT, activation='softmax')(x)
@@ -200,7 +196,7 @@ def trainModel(embedding_layer, x_train, y_train, x_val, y_val):
 
     # happy learning!
     model.fit(x_train, y_train, validation_data=(x_val, y_val),
-              nb_epoch=5, batch_size=128)
+              nb_epoch=10, batch_size=128)
 
 
 def main():
