@@ -24,7 +24,7 @@ import sys
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
-WORDS_PER_SAMPLE_SIZE = 50
+WORDS_PER_SAMPLE_SIZE = 30
 LABELS_COUNT = WORDS_PER_SAMPLE_SIZE + 1
 MAX_NB_WORDS = 20000
 EMBEDDING_DIM = 100
@@ -81,7 +81,7 @@ def sampleData():
         with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'r', encoding="utf8") as input:
             window = []
             step = 0
-            dotLike = re.compile('.*[\.?!]')
+            dotLike = re.compile('.*[;\.?!]')
             iterator = readwords(input)
             for word in iterator:
                 if len(window) < WORDS_PER_SAMPLE_SIZE:
