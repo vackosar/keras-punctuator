@@ -24,7 +24,7 @@ import sys
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
-WORDS_PER_SAMPLE_SIZE = 20
+WORDS_PER_SAMPLE_SIZE = 50
 LABELS_COUNT = WORDS_PER_SAMPLE_SIZE + 1
 MAX_NB_WORDS = 20000
 EMBEDDING_DIM = 100
@@ -62,9 +62,11 @@ def cleanData():
 def sampleData():
     import itertools
 
+    print("Sampling data...")
+
     NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
-    SAMPLE_COUNT = 10000000
-    MOVE_SIZE = int(WORDS_PER_SAMPLE_SIZE / 3)
+    SAMPLE_COUNT = 3000000
+    MOVE_SIZE = int(WORDS_PER_SAMPLE_SIZE)
 
     def readwords(mfile):
         byte_stream = itertools.groupby(
@@ -74,25 +76,26 @@ def sampleData():
 
         return ("".join(group) for pred, group in byte_stream if not pred)
 
-    def isMovingWindow(step):
-        return step % MOVE_SIZE != 0
 
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'r', encoding="utf8") as input:
             window = []
             step = 0
-            dotLike = re.compile('.*[,\.?!]')
-            for word in readwords(input):
+            dotLike = re.compile('.*[\.?!]')
+            iterator = readwords(input)
+            for word in iterator:
                 if len(window) < WORDS_PER_SAMPLE_SIZE:
                     window.append(word)
                     continue
                 if step > SAMPLE_COUNT:
                     break
                 step += 1
-                if isMovingWindow(step):
+                if dotLike.match(window[0]) is None:
                     window.append(word)
                     window.pop(0)
                     continue
+                window.append(iterator.__next__())
+                window.pop(0)
                 label = NO_DOT_LIKE_LABEL
                 for index, queued in enumerate(window):
                     if dotLike.match(queued) is not None:
@@ -103,6 +106,7 @@ def sampleData():
 
 
 def loadSamples():
+    print('Loading samples')
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'r', encoding="utf8") as input:
         samples = []
         labels = []
@@ -186,21 +190,31 @@ def createEmbeddingLayer(nb_words, embedding_matrix):
 
 
 def createModel(embedding_layer):
-    print('Training model.')
+    print('Creating model.')
     # train a 1D convnet with global maxpooling
     sequence_input = Input(shape=(WORDS_PER_SAMPLE_SIZE,), dtype='int32')
     x = embedding_layer(sequence_input)
-    # x = Conv1D(LABELS_COUNT*2, 10, activation='relu')(x)
+
+    x = Conv1D(LABELS_COUNT*2, 10, activation='relu')(x)
     # x = MaxPooling1D(5)(x)
-    x = Dense(LABELS_COUNT*2, activation='relu')(x)
-    x = Dropout(0.2)(x)
+    x = Dropout(0.3)(x)
+
+    x = Conv1D(LABELS_COUNT*2, 10, activation='relu')(x)
+    # x = MaxPooling1D(5)(x)
+    x = Dropout(0.3)(x)
+
+    # x = Dense(LABELS_COUNT*5, activation='relu')(x)
+    # x = Dropout(0.3)(x)
     # x = Dense(LABELS_COUNT*2, activation='relu')(x)
     # x = Dropout(0.25)(x)
-    x = Dense(LABELS_COUNT*2, activation='relu')(x)
-    x = Dropout(0.2)(x)
+    # x = Dense(LABELS_COUNT*5, activation='relu')(x)
+    # x = Dropout(0.3)(x)
 
-    # x = Dense(LABELS_COUNT*2, activation='relu')(x)
-    # x = Dropout(0.2)(x)
+    # x = Dense(LABELS_COUNT*5, activation='relu')(x)
+    # x = Dropout(0.3)(x)
+
+    x = Dense(LABELS_COUNT*5, activation='relu')(x)
+    x = Dropout(0.3)(x)
 
     x = Flatten()(x)
     preds = Dense(LABELS_COUNT, activation='softmax')(x)
@@ -211,8 +225,8 @@ def createModel(embedding_layer):
 
 
 def trainModel(model, x_train, y_train, x_val, y_val):
-    # happy learning!
-    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=10, batch_size=128)
+    print("Training")
+    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=3, batch_size=128)
     model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     return model
 
@@ -221,7 +235,7 @@ def customTest(model, tokenizer, samples):
     printSampleEvaluation(model, tokenizer, 'Altman was named president of Y Combinator, which funded the startup he co-founded in the first batch of funded companies in 2005.')
     printSampleEvaluation(model, tokenizer, 'In a 2014 blog post, Altman stated that the total valuation of all Y Combinator companies had surpassed $65 billion, including well-known companies like Airbnb, Dropbox, Zenefits and Stripe.')
     printSampleEvaluation(model, tokenizer, 'In September 2016 Altman announced that he will be president of YC Group, which includes Y Combinator and other units.')
-    for sample in samples[:30]:
+    for sample in samples[:100]:
         printSampleEvaluation(model, tokenizer, sample)
 
 
@@ -232,13 +246,13 @@ def printSampleEvaluation(model, tokenizer, sample):
     for i, word in enumerate(sample.split(' ')):
         print(word, end=' ')
         if i == index:
-            print(' * ', end='')
+            print('*', end=' ')
     print('')
 
 
 def main():
     # cleanData()
-    # sampleData()
+    sampleData()
     labels, samples = loadSamples()
     tokenized_labels, tokenized_samples, tokenizer = tokenize(labels, samples)
     x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
