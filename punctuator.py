@@ -24,8 +24,8 @@ import sys
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
-WORDS_PER_SAMPLE_SIZE = 30
-LABELS_COUNT = WORDS_PER_SAMPLE_SIZE + 1
+WORDS_PER_SAMPLE_SIZE = 20
+LABELS_COUNT = WORDS_PER_SAMPLE_SIZE
 MAX_NB_WORDS = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
@@ -81,7 +81,7 @@ def sampleData():
         with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'r', encoding="utf8") as input:
             window = []
             step = 0
-            dotLike = re.compile('.*[;\.?!]')
+            dotLike = re.compile('.*[;,\.?!]')
             iterator = readwords(input)
             for word in iterator:
                 if len(window) < WORDS_PER_SAMPLE_SIZE:
@@ -96,10 +96,13 @@ def sampleData():
                     continue
                 window.append(iterator.__next__())
                 window.pop(0)
-                label = NO_DOT_LIKE_LABEL
+                label = None
                 for index, queued in enumerate(window):
                     if dotLike.match(queued) is not None:
                         label = index
+                        break
+                if label is None:
+                    continue
                 output.write(' '.join(window))
                 output.write(' ' + str(label))
                 output.write('\n')
@@ -195,26 +198,23 @@ def createModel(embedding_layer):
     sequence_input = Input(shape=(WORDS_PER_SAMPLE_SIZE,), dtype='int32')
     x = embedding_layer(sequence_input)
 
-    x = Conv1D(LABELS_COUNT*2, 10, activation='relu')(x)
-    # x = MaxPooling1D(5)(x)
-    x = Dropout(0.3)(x)
-
-    x = Conv1D(LABELS_COUNT*2, 10, activation='relu')(x)
-    # x = MaxPooling1D(5)(x)
-    x = Dropout(0.3)(x)
-
-    # x = Dense(LABELS_COUNT*5, activation='relu')(x)
-    # x = Dropout(0.3)(x)
-    # x = Dense(LABELS_COUNT*2, activation='relu')(x)
-    # x = Dropout(0.25)(x)
-    # x = Dense(LABELS_COUNT*5, activation='relu')(x)
+    # x = Conv1D(LABELS_COUNT*4, 4, activation='relu')(x)
     # x = Dropout(0.3)(x)
 
-    # x = Dense(LABELS_COUNT*5, activation='relu')(x)
+    # x = Conv1D(LABELS_COUNT*4, 4, activation='relu')(x)
     # x = Dropout(0.3)(x)
 
     x = Dense(LABELS_COUNT*5, activation='relu')(x)
     x = Dropout(0.3)(x)
+
+    x = Dense(LABELS_COUNT*10, activation='relu')(x)
+    x = Dropout(0.3)(x)
+
+    x = Dense(LABELS_COUNT*5, activation='relu')(x)
+    x = Dropout(0.3)(x)
+
+    # x = Dense(LABELS_COUNT*3, activation='relu')(x)
+    # x = Dropout(0.3)(x)
 
     x = Flatten()(x)
     preds = Dense(LABELS_COUNT, activation='softmax')(x)
@@ -226,7 +226,7 @@ def createModel(embedding_layer):
 
 def trainModel(model, x_train, y_train, x_val, y_val):
     print("Training")
-    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=3, batch_size=128)
+    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=5, batch_size=128)
     model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     return model
 
@@ -247,6 +247,8 @@ def printSampleEvaluation(model, tokenizer, sample):
         print(word, end=' ')
         if i == index:
             print('*', end=' ')
+    if index == WORDS_PER_SAMPLE_SIZE:
+        print(" *None*", end=' ')
     print('')
 
 
