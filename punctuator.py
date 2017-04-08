@@ -65,7 +65,7 @@ def sampleData():
     print("Sampling data...")
 
     NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
-    SAMPLE_COUNT = 3000000
+    SAMPLE_COUNT = 4000000
     MOVE_SIZE = int(WORDS_PER_SAMPLE_SIZE)
 
     def readwords(mfile):
@@ -171,6 +171,7 @@ def indexEmbeddingWordVectors():
 def prepareEmbeddingMatrix(word_index, embeddings_index, nb_words):
     print('Preparing embedding matrix.')
     # prepare embedding matrix
+    found = 0
     embedding_matrix = np.zeros((nb_words, EMBEDDING_DIM))
     for word, i in word_index.items():
         if i >= nb_words:
@@ -179,6 +180,8 @@ def prepareEmbeddingMatrix(word_index, embeddings_index, nb_words):
         if embedding_vector is not None:
             # words not found in embedding index will be all-zeros.
             embedding_matrix[i] = embedding_vector
+            found += 1
+    print("Found " + str(found) + " words in embeddings.")
     return embedding_matrix
 
 
@@ -198,35 +201,25 @@ def createModel(embedding_layer):
     sequence_input = Input(shape=(WORDS_PER_SAMPLE_SIZE,), dtype='int32')
     x = embedding_layer(sequence_input)
 
-    # x = Conv1D(LABELS_COUNT*4, 4, activation='relu')(x)
-    # x = Dropout(0.3)(x)
-
-    # x = Conv1D(LABELS_COUNT*4, 4, activation='relu')(x)
-    # x = Dropout(0.3)(x)
-
-    x = Dense(LABELS_COUNT*5, activation='relu')(x)
+    x = Conv1D(150, 3, activation='relu')(x)
     x = Dropout(0.3)(x)
 
-    x = Dense(LABELS_COUNT*10, activation='relu')(x)
-    x = Dropout(0.3)(x)
 
-    x = Dense(LABELS_COUNT*5, activation='relu')(x)
-    x = Dropout(0.3)(x)
+    x = Flatten()(x)
 
     # x = Dense(LABELS_COUNT*3, activation='relu')(x)
     # x = Dropout(0.3)(x)
 
-    x = Flatten()(x)
-    preds = Dense(LABELS_COUNT, activation='softmax')(x)
+    x = Dense(LABELS_COUNT, activation='softmax')(x)
 
-    model = Model(sequence_input, preds)
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
+    model = Model(sequence_input, x)
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['acc'])
     return model
 
 
 def trainModel(model, x_train, y_train, x_val, y_val):
     print("Training")
-    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=5, batch_size=128)
+    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=3, batch_size=128)
     model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     return model
 
@@ -242,6 +235,7 @@ def customTest(model, tokenizer, samples):
 def printSampleEvaluation(model, tokenizer, sample):
     tokenized = pad_sequences(tokenizer.texts_to_sequences(sample), maxlen=WORDS_PER_SAMPLE_SIZE)
     preds = list(model.predict(tokenized)[0])
+    print(preds)
     index = preds.index(max(preds))
     for i, word in enumerate(sample.split(' ')):
         print(word, end=' ')
