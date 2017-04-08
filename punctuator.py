@@ -24,9 +24,9 @@ import sys
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
-WORDS_PER_SAMPLE_SIZE = 20
+WORDS_PER_SAMPLE_SIZE = 35
 LABELS_COUNT = WORDS_PER_SAMPLE_SIZE
-MAX_NB_WORDS = 20000
+MAX_NB_WORDS = 30000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
 SAVE_SAMPLED = False
@@ -48,7 +48,7 @@ VOCAB_SIZE = 8192
 
 def cleanData():
     toDelete = re.compile(
-        '.*Resumption of the session.*|.*VOTE.*|^Agenda$|.*report[ ]*$|^$|^\.$|([^)]*)|[^a-z0-9A-Z\',\.?! ]')
+        '\([^)]*\)|.*Resumption of the session.*|.*VOTE.*|^Agenda$|.*report[ ]*$|^$|^\.$|([^)]*)|[^a-z0-9A-Z\',\.?! ]')
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/europarl-v7.en", encoding="utf8") as input:
             for fullLine in input:
@@ -65,7 +65,7 @@ def sampleData():
     print("Sampling data...")
 
     NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
-    SAMPLE_COUNT = 4000000
+    SAMPLE_COUNT = 10000000
     MOVE_SIZE = int(WORDS_PER_SAMPLE_SIZE)
 
     def readwords(mfile):
@@ -81,7 +81,7 @@ def sampleData():
         with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'r', encoding="utf8") as input:
             window = []
             step = 0
-            dotLike = re.compile('.*[;,\.?!]')
+            dotLike = re.compile('.*[\.?!]')
             iterator = readwords(input)
             for word in iterator:
                 if len(window) < WORDS_PER_SAMPLE_SIZE:
@@ -122,7 +122,7 @@ def loadSamples():
 
 
 def tokenize(labels, samples):
-    tokenizer = Tokenizer(nb_words=MAX_NB_WORDS)
+    tokenizer = Tokenizer(num_words=MAX_NB_WORDS)
     tokenizer.fit_on_texts(samples)
     tokenized_samples = tokenizer.texts_to_sequences(samples)
     padded_samples = pad_sequences(tokenized_samples, maxlen=WORDS_PER_SAMPLE_SIZE)
@@ -201,25 +201,24 @@ def createModel(embedding_layer):
     sequence_input = Input(shape=(WORDS_PER_SAMPLE_SIZE,), dtype='int32')
     x = embedding_layer(sequence_input)
 
-    x = Conv1D(150, 3, activation='relu')(x)
-    x = Dropout(0.3)(x)
+    x = Conv1D(256, 3, activation='relu')(x)
+    x = Dropout(0.25)(x)
 
+    x = Dense(WORDS_PER_SAMPLE_SIZE, activation='relu')(x)
+    x = Dropout(0.25)(x)
 
     x = Flatten()(x)
-
-    # x = Dense(LABELS_COUNT*3, activation='relu')(x)
-    # x = Dropout(0.3)(x)
 
     x = Dense(LABELS_COUNT, activation='softmax')(x)
 
     model = Model(sequence_input, x)
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['acc'])
+    model.compile(loss='mean_squared_error', optimizer='adam', metrics=['acc'])
     return model
 
 
 def trainModel(model, x_train, y_train, x_val, y_val):
     print("Training")
-    model.fit(x_train, y_train, validation_data=(x_val, y_val), nb_epoch=3, batch_size=128)
+    model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=5, batch_size=128)
     model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     return model
 
@@ -235,7 +234,7 @@ def customTest(model, tokenizer, samples):
 def printSampleEvaluation(model, tokenizer, sample):
     tokenized = pad_sequences(tokenizer.texts_to_sequences(sample), maxlen=WORDS_PER_SAMPLE_SIZE)
     preds = list(model.predict(tokenized)[0])
-    print(preds)
+    # print(preds)
     index = preds.index(max(preds))
     for i, word in enumerate(sample.split(' ')):
         print(word, end=' ')
@@ -248,7 +247,7 @@ def printSampleEvaluation(model, tokenizer, sample):
 
 def main():
     # cleanData()
-    sampleData()
+    # sampleData()
     labels, samples = loadSamples()
     tokenized_labels, tokenized_samples, tokenizer = tokenize(labels, samples)
     x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
