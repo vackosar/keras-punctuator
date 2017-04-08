@@ -18,7 +18,7 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.utils.np_utils import to_categorical
 from keras.layers import Dense, Input, Flatten, Dropout
 from keras.layers import Conv1D, MaxPooling1D, Embedding
-from keras.models import Model
+from keras.models import Model, Sequential
 import sys
 
 BASE_DIR = 'D:\\IdeaProjects\\data'
@@ -192,26 +192,18 @@ def createEmbeddingLayer(nb_words, embedding_matrix):
                                 EMBEDDING_DIM,
                                 weights=[embedding_matrix],
                                 input_length=WORDS_PER_SAMPLE_SIZE,
-                                trainable=False)
+                                trainable=False, input_shape=(WORDS_PER_SAMPLE_SIZE,))
 
 
 def createModel(embedding_layer):
     print('Creating model.')
-    # train a 1D convnet with global maxpooling
-    sequence_input = Input(shape=(WORDS_PER_SAMPLE_SIZE,), dtype='int32')
-    x = embedding_layer(sequence_input)
-
-    x = Conv1D(256, 3, activation='relu')(x)
-    x = Dropout(0.25)(x)
-
-    x = Dense(WORDS_PER_SAMPLE_SIZE, activation='relu')(x)
-    x = Dropout(0.25)(x)
-
-    x = Flatten()(x)
-
-    x = Dense(LABELS_COUNT, activation='softmax')(x)
-
-    model = Model(sequence_input, x)
+    model = Sequential()
+    model.add(embedding_layer)
+    model.add(Dense(256, activation='relu'))
+    model.add(Dense(256, activation='relu'))
+    model.add(Dropout(0.25))
+    model.add(Flatten())
+    model.add(Dense(LABELS_COUNT, activation='softmax'))
     model.compile(loss='mean_squared_error', optimizer='adam', metrics=['acc'])
     return model
 
