@@ -65,7 +65,7 @@ def sampleData():
     print("Sampling data...")
 
     NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
-    SAMPLE_COUNT = 10000000
+    SAMPLE_COUNT = 50000000
     MOVE_SIZE = int(WORDS_PER_SAMPLE_SIZE)
 
     def readwords(mfile):
@@ -81,7 +81,7 @@ def sampleData():
         with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'r', encoding="utf8") as input:
             window = []
             step = 0
-            dotLike = re.compile('.*[\.?!]')
+            dotLike = re.compile('.*\.')
             iterator = readwords(input)
             for word in iterator:
                 if len(window) < WORDS_PER_SAMPLE_SIZE:
@@ -187,7 +187,10 @@ def prepareEmbeddingMatrix(word_index, embeddings_index, nb_words):
 
 # load pre-trained word embeddings into an Embedding layer
 # note that we set trainable = False so as to keep the embeddings fixed
-def createEmbeddingLayer(nb_words, embedding_matrix):
+def createEmbeddingLayer(tokenizer):
+    embeddings_index = indexEmbeddingWordVectors()
+    nb_words = min(MAX_NB_WORDS, len(tokenizer.word_index))
+    embedding_matrix = prepareEmbeddingMatrix(tokenizer.word_index, embeddings_index, nb_words)
     return Embedding(nb_words,
                                 EMBEDDING_DIM,
                                 weights=[embedding_matrix],
@@ -195,16 +198,19 @@ def createEmbeddingLayer(nb_words, embedding_matrix):
                                 trainable=False, input_shape=(WORDS_PER_SAMPLE_SIZE,))
 
 
-def createModel(embedding_layer):
+def createModel(tokenizer):
     print('Creating model.')
     model = Sequential()
-    model.add(embedding_layer)
-    model.add(Dense(256, activation='relu'))
-    model.add(Dense(256, activation='relu'))
+    model.add(createEmbeddingLayer(tokenizer))
+    model.add(Conv1D(64, 4, activation='relu'))
+    model.add(Dropout(0.25))
+    model.add(Conv1D(64, 4, activation='relu', strides=2))
+    model.add(Dropout(0.25))
+    model.add(Conv1D(64, 4, activation='relu', strides=2))
     model.add(Dropout(0.25))
     model.add(Flatten())
     model.add(Dense(LABELS_COUNT, activation='softmax'))
-    model.compile(loss='mean_squared_error', optimizer='adam', metrics=['acc'])
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['acc'])
     return model
 
 
@@ -243,11 +249,7 @@ def main():
     labels, samples = loadSamples()
     tokenized_labels, tokenized_samples, tokenizer = tokenize(labels, samples)
     x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
-    embeddings_index = indexEmbeddingWordVectors()
-    nb_words = min(MAX_NB_WORDS, len(tokenizer.word_index))
-    embedding_matrix = prepareEmbeddingMatrix(tokenizer.word_index, embeddings_index, nb_words)
-    embedding_layer = createEmbeddingLayer(nb_words, embedding_matrix)
-    model = createModel(embedding_layer)
+    model = createModel(tokenizer)
     trainModel(model, x_train, y_train, x_val, y_val)
     customTest(model, tokenizer, samples)
 
