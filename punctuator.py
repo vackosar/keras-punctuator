@@ -24,9 +24,10 @@ import sys
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
-WORDS_PER_SAMPLE_SIZE = 35
-LABELS_COUNT = WORDS_PER_SAMPLE_SIZE
-MAX_NB_WORDS = 30000
+WORDS_PER_SAMPLE_SIZE = 20
+DETECTION_INDEX = int(WORDS_PER_SAMPLE_SIZE / 2)
+LABELS_COUNT = 2
+MAX_NB_WORDS = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
 SAVE_SAMPLED = False
@@ -36,8 +37,6 @@ SAVE_SAMPLED = False
 # cat europarl-v7.en.clean.txt |wc -w
 # 53603063
 # 53603063 / 5102642 = 10.5
-DOT_WORD = ' ddoott '
-WORDS_PER_PUNCT = 11
 
 # How large vocab? http://conversationsdirect.com/index.php?option=com_content&view=article&id=142%3Ahow-many-words-do-you-need-to-know-to-understand-english&catid=68%3Aarticles&Itemid=149&lang=en
 # 2^13 = 8192
@@ -63,10 +62,15 @@ def sampleData():
     import itertools
 
     print("Sampling data...")
+    SAMPLE_COUNT = 10000000
+    LOG_SAMPLE_NUM_STEP = 10000
+    DOT_LIKE = re.compile('.*[,;.!?]')
 
-    NO_DOT_LIKE_LABEL = WORDS_PER_SAMPLE_SIZE
-    SAMPLE_COUNT = 50000000
-    MOVE_SIZE = int(WORDS_PER_SAMPLE_SIZE)
+    def incrementSampleNum(sampleNum):
+        sampleNum += 1
+        if sampleNum % LOG_SAMPLE_NUM_STEP == 0:
+            print('sampleNum: ' + str(sampleNum))
+        return sampleNum
 
     def readwords(mfile):
         byte_stream = itertools.groupby(
@@ -80,36 +84,33 @@ def sampleData():
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'r', encoding="utf8") as input:
             window = []
-            step = 0
-            dotLike = re.compile('.*\.')
-            iterator = readwords(input)
-            for word in iterator:
+            sampleNum = 0
+            for word in readwords(input):
                 if len(window) < WORDS_PER_SAMPLE_SIZE:
                     window.append(word)
                     continue
-                if step > SAMPLE_COUNT:
-                    break
-                step += 1
-                if dotLike.match(window[0]) is None:
-                    window.append(word)
-                    window.pop(0)
-                    continue
-                window.append(iterator.__next__())
+                window.append(word)
                 window.pop(0)
-                label = None
-                for index, queued in enumerate(window):
-                    if dotLike.match(queued) is not None:
-                        label = index
-                        break
-                if label is None:
-                    continue
+                middle = window[-DETECTION_INDEX]
+                if DOT_LIKE.match(middle) is not None:
+                    label = True
+                else:
+                    label = False
                 output.write(' '.join(window))
                 output.write(' ' + str(label))
                 output.write('\n')
+                sampleNum = incrementSampleNum(sampleNum)
+                if sampleNum > SAMPLE_COUNT:
+                    break
+                if label:
+                    window = window[-DETECTION_INDEX + 1:]
+
+
 
 
 def loadSamples():
-    print('Loading samples')
+    SAMPLE_COUNT = 100000000000
+    print('Loading maximum ' + str(SAMPLE_COUNT) + ' samples')
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'r', encoding="utf8") as input:
         samples = []
         labels = []
@@ -117,7 +118,9 @@ def loadSamples():
             line = fullLine.rstrip()
             split = line.split(' ')
             samples.append(' '.join(split[:-1]))
-            labels.append(int(split[-1]))
+            labels.append(bool(split[-1]))
+            if len(samples) > SAMPLE_COUNT:
+                break
         return labels, samples
 
 
@@ -202,22 +205,23 @@ def createModel(tokenizer):
     print('Creating model.')
     model = Sequential()
     model.add(createEmbeddingLayer(tokenizer))
-    model.add(Conv1D(64, 4, activation='relu'))
+    model.add(Conv1D(512, 4, activation='relu'))
     model.add(Dropout(0.25))
-    model.add(Conv1D(64, 4, activation='relu', strides=2))
-    model.add(Dropout(0.25))
-    model.add(Conv1D(64, 4, activation='relu', strides=2))
-    model.add(Dropout(0.25))
+    # model.add(Conv1D(2048, 4, activation='relu', strides=2))
+    # model.add(Dropout(0.25))
     model.add(Flatten())
+    # model.add(Dense(512, activation='relu'))
+    # model.add(Dropout(0.25))
     model.add(Dense(LABELS_COUNT, activation='softmax'))
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['acc'])
+    # alternative optimizer: rmsprop, adam
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
     return model
 
 
 def trainModel(model, x_train, y_train, x_val, y_val):
     print("Training")
-    model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=5, batch_size=128)
-    model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
+    model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=4, batch_size=128)
+    # model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     return model
 
 
@@ -232,12 +236,14 @@ def customTest(model, tokenizer, samples):
 def printSampleEvaluation(model, tokenizer, sample):
     tokenized = pad_sequences(tokenizer.texts_to_sequences(sample), maxlen=WORDS_PER_SAMPLE_SIZE)
     preds = list(model.predict(tokenized)[0])
-    # print(preds)
     index = preds.index(max(preds))
     for i, word in enumerate(sample.split(' ')):
         print(word, end=' ')
-        if i == index:
-            print('*', end=' ')
+        if i == DETECTION_INDEX:
+            if index == 0:
+                print('*', end=' ')
+            else:
+                print('', end=' ')
     if index == WORDS_PER_SAMPLE_SIZE:
         print(" *None*", end=' ')
     print('')
@@ -245,7 +251,7 @@ def printSampleEvaluation(model, tokenizer, sample):
 
 def main():
     # cleanData()
-    # sampleData()
+    sampleData()
     labels, samples = loadSamples()
     tokenized_labels, tokenized_samples, tokenizer = tokenize(labels, samples)
     x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
