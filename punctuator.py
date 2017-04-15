@@ -109,9 +109,8 @@ def sampleData():
                     break
 
 
-def loadSamples():
-    SAMPLE_COUNT = 100000
-    print('Loading maximum ' + str(SAMPLE_COUNT) + ' samples')
+def loadSamples(samplesCount):
+    print('Loading maximum ' + str(samplesCount) + ' samples')
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'r', encoding="utf8") as input:
         samples = []
         labels = []
@@ -123,7 +122,7 @@ def loadSamples():
                 labels.append(True)
             else:
                 labels.append(False)
-            if len(samples) > SAMPLE_COUNT:
+            if len(samples) > samplesCount:
                 break
         return labels, samples
 
@@ -259,21 +258,27 @@ def createModel(word_index):
     return model
 
 
-def trainModel(model, word_index, samples, x_train, y_train, x_val, y_val):
+def trainModel(model, x_train, y_train, x_val, y_val):
     print("Training")
-    EPOCHS = 4
+    EPOCHS = 1
     for i in range(1, EPOCHS):
         model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=1, batch_size=128)
-        customTest(samples)
+        customTest()
     model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     return model
 
 
-def customTest(samples):
+def customTest():
+    labels, samples = loadSamples(100)
     word_index = loadWordIndex()
     model = createModel(word_index)
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
-    printSampleEvaluation(model, word_index, 'Altman was named president of Y Combinator, which funded the startup he co-founded in the first batch of funded companies in 2005.')
+    altmanText = 'Altman was named president of Y Combinator, which funded the startup he co-founded in the first batch of funded companies in 2005.'
+    for numPreWords in range(0, len(altmanText)):
+        testText = ''
+        for preWordIndex in range(0, numPreWords):
+            testText = '- ' + testText
+        printSampleEvaluation(model, word_index, testText)
     printSampleEvaluation(model, word_index, 'In a 2014 blog post, Altman stated that the total valuation of all Y Combinator companies had surpassed $65 billion, including well-known companies like Airbnb, Dropbox, Zenefits and Stripe.')
     printSampleEvaluation(model, word_index, 'In September 2016 Altman announced that he will be president of YC Group, which includes Y Combinator and other units.')
     for sample in samples[:100]:
@@ -300,11 +305,11 @@ def printSampleEvaluation(model, word_index, sample):
 def main():
     # cleanData()
     # sampleData()
-    labels, samples = loadSamples()
-    tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
-    x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
-    model = createModel(word_index)
-    trainModel(model, word_index, samples, x_train, y_train, x_val, y_val)
-    customTest(samples)
+    # labels, samples = loadSamples(100000)
+    # tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
+    # x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
+    # model = createModel(word_index)
+    # trainModel(model, x_train, y_train, x_val, y_val)
+    customTest()
 
 main()
