@@ -60,9 +60,10 @@ def cleanData():
 
 def sampleData():
     import itertools
+    from random import randint
 
     print("Sampling data...")
-    SAMPLE_COUNT = 10000000
+    SAMPLE_COUNT = 1000000
     LOG_SAMPLE_NUM_STEP = 10000
     DOT_LIKE = re.compile('.*[,;.!?]')
 
@@ -80,6 +81,11 @@ def sampleData():
 
         return ("".join(group) for pred, group in byte_stream if not pred)
 
+    def write(output, window, label):
+        output.write(' '.join(window))
+        output.write(' ' + str(label))
+        output.write('\n')
+
 
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'r', encoding="utf8") as input:
@@ -96,9 +102,9 @@ def sampleData():
                     label = True
                 else:
                     label = False
-                output.write(' '.join(window))
-                output.write(' ' + str(label))
-                output.write('\n')
+                    if randint(0, 10) < 10:
+                        continue
+                write(output, window, label)
                 sampleNum = incrementSampleNum(sampleNum)
                 if sampleNum > SAMPLE_COUNT:
                     break
@@ -205,22 +211,24 @@ def createModel(tokenizer):
     print('Creating model.')
     model = Sequential()
     model.add(createEmbeddingLayer(tokenizer))
-    model.add(Conv1D(512, 4, activation='relu'))
+    model.add(Conv1D(2048, 4, activation='relu'))
     model.add(Dropout(0.25))
-    # model.add(Conv1D(2048, 4, activation='relu', strides=2))
-    # model.add(Dropout(0.25))
+    model.add(Conv1D(1024, 4, activation='relu'))
+    model.add(Dropout(0.25))
     model.add(Flatten())
-    # model.add(Dense(512, activation='relu'))
-    # model.add(Dropout(0.25))
+    model.add(Dense(512, activation='relu'))
+    model.add(Dropout(0.25))
     model.add(Dense(LABELS_COUNT, activation='softmax'))
     # alternative optimizer: rmsprop, adam
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
     return model
 
 
-def trainModel(model, x_train, y_train, x_val, y_val):
+def trainModel(model, tokenizer, samples, x_train, y_train, x_val, y_val):
     print("Training")
-    model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=4, batch_size=128)
+    for i in range(1,4):
+        model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=1, batch_size=128)
+        customTest(model, tokenizer, samples)
     # model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     return model
 
@@ -251,13 +259,12 @@ def printSampleEvaluation(model, tokenizer, sample):
 
 def main():
     # cleanData()
-    sampleData()
+    # sampleData()
     labels, samples = loadSamples()
     tokenized_labels, tokenized_samples, tokenizer = tokenize(labels, samples)
     x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
     model = createModel(tokenizer)
-    trainModel(model, x_train, y_train, x_val, y_val)
-    customTest(model, tokenizer, samples)
+    trainModel(model, tokenizer, samples, x_train, y_train, x_val, y_val)
 
 
 main()
