@@ -64,12 +64,11 @@ def cleanData(inputFile='europarl-v7.en'):
                 output.write(line + " ")
 
 
-def sampleData(inputFile="europarl-v7.en.clean.txt", outputFile="europarl-v7.en.samples.txt", weighted=True):
+def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", outputFile="europarl-v7.en.samples.txt", weighted=True):
     import itertools
     from random import randint
 
     print("Sampling data...")
-    SAMPLE_COUNT = 1000000
     LOG_SAMPLE_NUM_STEP = 10000
     DOT_LIKE = re.compile('.*[,;.!?]')
 
@@ -111,7 +110,7 @@ def sampleData(inputFile="europarl-v7.en.clean.txt", outputFile="europarl-v7.en.
                         continue
                 write(output, window, label)
                 sampleNum = incrementSampleNum(sampleNum)
-                if sampleNum > SAMPLE_COUNT:
+                if sampleNum > sampleCount:
                     break
 
 
@@ -276,7 +275,7 @@ def trainModel(model, x_train, y_train, x_val, y_val):
 
 def test():
     cleanData("presuation.txt")
-    sampleData('presuation.txt.clean.txt', 'test.samples.txt', False)
+    sampleData(100, 'presuation.txt.clean.txt', 'test.samples.txt', False)
     labels, samples = loadSamples(100, 'test.samples.txt')
     word_index = loadWordIndex()
     model = createModel(word_index)
@@ -313,12 +312,12 @@ def printSampleEvaluation(model, word_index, sample):
 
 def main():
     # cleanData()
-    # sampleData()
-    # labels, samples = loadSamples(1000000)
-    # tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
-    # x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
-    # model = createModel(word_index)
-    # trainModel(model, x_train, y_train, x_val, y_val)
+    sampleData(4000000, weighted=False)
+    labels, samples = loadSamples(4000000)
+    tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
+    x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
+    model = createModel(word_index)
+    trainModel(model, x_train, y_train, x_val, y_val)
     test()
 
 main()
