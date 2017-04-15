@@ -44,20 +44,27 @@ VOCAB_SIZE = 8192
 
 # Clean and label data
 
-def cleanData():
-    toDelete = re.compile(
-        '\([^)]*\)|.*Resumption of the session.*|.*VOTE.*|^Agenda$|.*report[ ]*$|^$|^\.$|([^)]*)|[^a-z0-9A-Z\',\.?! ]')
-    with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'w', encoding="utf8") as output:
-        with open(BASE_DIR + "/europarl-v7/europarl-v7.en", encoding="utf8") as input:
+def cleanData(inputFile='europarl-v7.en'):
+    mappings = {
+        re.compile('\([^)]*\)'): '',
+        re.compile('’'): '\'',
+        re.compile('[-—]'): ' ',
+        re.compile('[^a-z0-9A-Z\',\.?! ]'): '',
+        re.compile('^$|^\.$'): '',
+        re.compile('.*Resumption of the session.*|.*VOTE.*|^Agenda$.*report[ ]*$'): '',
+    }
+    with open(BASE_DIR + "/europarl-v7/" + inputFile + '.clean.txt', 'w', encoding="utf8") as output:
+        with open(BASE_DIR + "/europarl-v7/" + inputFile, encoding="utf8") as input:
             for fullLine in input:
                 line = fullLine.rstrip()
-                toDelete.sub('', line)
+                for pattern, replacement in mappings.items():
+                    line = pattern.sub(replacement, line)
                 if len(line) == 0:
                     continue
                 output.write(line + " ")
 
 
-def sampleData():
+def sampleData(inputFile="europarl-v7.en.clean.txt", outputFile="europarl-v7.en.samples.txt", weighted=True):
     import itertools
     from random import randint
 
@@ -85,9 +92,8 @@ def sampleData():
         output.write(' ' + str(label))
         output.write('\n')
 
-
-    with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'w', encoding="utf8") as output:
-        with open(BASE_DIR + "/europarl-v7/europarl-v7.en.clean.txt", 'r', encoding="utf8") as input:
+    with open(BASE_DIR + "/europarl-v7/" + outputFile, 'w', encoding="utf8") as output:
+        with open(BASE_DIR + "/europarl-v7/" + inputFile, 'r', encoding="utf8") as input:
             window = []
             sampleNum = 0
             for word in readwords(input):
@@ -101,7 +107,7 @@ def sampleData():
                     label = True
                 else:
                     label = False
-                    if randint(0, 9) < 9:
+                    if weighted and randint(0, 9) < 9:
                         continue
                 write(output, window, label)
                 sampleNum = incrementSampleNum(sampleNum)
@@ -109,9 +115,9 @@ def sampleData():
                     break
 
 
-def loadSamples(samplesCount):
+def loadSamples(samplesCount, source='europarl-v7.en.samples.txt'):
     print('Loading maximum ' + str(samplesCount) + ' samples')
-    with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'r', encoding="utf8") as input:
+    with open(BASE_DIR + "/europarl-v7/" + source, 'r', encoding="utf8") as input:
         samples = []
         labels = []
         for fullLine in input:
@@ -260,27 +266,30 @@ def createModel(word_index):
 
 def trainModel(model, x_train, y_train, x_val, y_val):
     print("Training")
-    EPOCHS = 1
-    for i in range(1, EPOCHS):
+    EPOCHS = 2
+    for i in range(0, EPOCHS):
         model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=1, batch_size=128)
-        customTest()
+        test()
     model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     return model
 
 
-def customTest():
-    labels, samples = loadSamples(100)
+def test():
+    cleanData("presuation.txt")
+    sampleData('presuation.txt.clean.txt', 'test.samples.txt', False)
+    labels, samples = loadSamples(100, 'test.samples.txt')
     word_index = loadWordIndex()
     model = createModel(word_index)
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
-    altmanText = 'Altman was named president of Y Combinator, which funded the startup he co-founded in the first batch of funded companies in 2005.'
-    for numPreWords in range(0, len(altmanText)):
-        testText = ''
-        for preWordIndex in range(0, numPreWords):
-            testText = '- ' + testText
-        printSampleEvaluation(model, word_index, testText)
-    printSampleEvaluation(model, word_index, 'In a 2014 blog post, Altman stated that the total valuation of all Y Combinator companies had surpassed $65 billion, including well-known companies like Airbnb, Dropbox, Zenefits and Stripe.')
-    printSampleEvaluation(model, word_index, 'In September 2016 Altman announced that he will be president of YC Group, which includes Y Combinator and other units.')
+    # altmanText = 'Altman was named president of Y Combinator, which funded the startup he co-founded in the first batch of funded companies in 2005.'
+    # for numPreWords in range(0, 9):
+    #     testText = altmanText
+    #     for preWordIndex in range(0, numPreWords):
+    #         testText = '_NONSENSE_ ' + testText
+    #     printSampleEvaluation(model, word_index, testText)
+    #     printSampleEvaluation(model, word_index, ' '.join(altmanText.split(' ')[numPreWords:]))
+    # printSampleEvaluation(model, word_index, 'In a 2014 blog post, Altman stated that the total valuation of all Y Combinator companies had surpassed $65 billion, including well-known companies like Airbnb, Dropbox, Zenefits and Stripe.')
+    # printSampleEvaluation(model, word_index, 'In September 2016 Altman announced that he will be president of YC Group, which includes Y Combinator and other units.')
     for sample in samples[:100]:
         printSampleEvaluation(model, word_index, sample)
 
@@ -305,11 +314,11 @@ def printSampleEvaluation(model, word_index, sample):
 def main():
     # cleanData()
     # sampleData()
-    # labels, samples = loadSamples(100000)
+    # labels, samples = loadSamples(1000000)
     # tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
     # x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
     # model = createModel(word_index)
     # trainModel(model, x_train, y_train, x_val, y_val)
-    customTest()
+    test()
 
 main()
