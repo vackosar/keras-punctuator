@@ -13,13 +13,12 @@ import numpy as np
 
 np.random.seed(1337)
 
-from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.text import Tokenizer, text_to_word_sequence
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils.np_utils import to_categorical
-from keras.layers import Dense, Input, Flatten, Dropout
-from keras.layers import Conv1D, MaxPooling1D, Embedding
-from keras.models import Model, Sequential
-import sys
+from keras.layers import Dense, Flatten, Dropout
+from keras.layers import Conv1D, Embedding
+from keras.models import Sequential
 
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
@@ -102,20 +101,16 @@ def sampleData():
                     label = True
                 else:
                     label = False
-                    if randint(0, 10) < 10:
+                    if randint(0, 9) < 9:
                         continue
                 write(output, window, label)
                 sampleNum = incrementSampleNum(sampleNum)
                 if sampleNum > SAMPLE_COUNT:
                     break
-                if label:
-                    window = window[-DETECTION_INDEX + 1:]
-
-
 
 
 def loadSamples():
-    SAMPLE_COUNT = 100000000000
+    SAMPLE_COUNT = 100000
     print('Loading maximum ' + str(SAMPLE_COUNT) + ' samples')
     with open(BASE_DIR + "/europarl-v7/europarl-v7.en.samples.txt", 'r', encoding="utf8") as input:
         samples = []
@@ -124,27 +119,67 @@ def loadSamples():
             line = fullLine.rstrip()
             split = line.split(' ')
             samples.append(' '.join(split[:-1]))
-            labels.append(bool(split[-1]))
+            if split[-1] == "True":
+                labels.append(True)
+            else:
+                labels.append(False)
             if len(samples) > SAMPLE_COUNT:
                 break
         return labels, samples
 
 
-def tokenize(labels, samples):
-    tokenizer = Tokenizer(num_words=MAX_NB_WORDS)
-    tokenizer.fit_on_texts(samples)
-    tokenized_samples = tokenizer.texts_to_sequences(samples)
-    padded_samples = pad_sequences(tokenized_samples, maxlen=WORDS_PER_SAMPLE_SIZE)
+def texts_to_sequences(word_index, texts, num_words):
+    lastWord = num_words
+    sequences = []
+    for text in texts:
+        seq = text_to_word_sequence(text)
+        vect = []
+        for w in seq:
+            i = word_index.get(w)
+            if i is not None:
+                if num_words and i >= num_words:
+                    vect.append(lastWord)
+                else:
+                    vect.append(i)
+            else:
+                vect.append(lastWord)
+        sequences.append(vect)
+    return sequences
 
-    word_index = tokenizer.word_index
-    print('Found %s unique tokens.' % len(word_index))
+def loadWordIndex():
+    return loadObject('word_index')
+
+def tokenize(labels, samples):
+
+    def saveWordIndex(samples):
+        tokenizer = Tokenizer(num_words=MAX_NB_WORDS)
+        tokenizer.fit_on_texts(samples)
+        word_index = tokenizer.word_index
+        saveObject(word_index, 'word_index')
+        print('Found %s unique tokens.' % len(word_index))
+
+    saveWordIndex(samples)
+    word_index = loadWordIndex()
+
+    tokenizedSamples = texts_to_sequences(word_index, samples, MAX_NB_WORDS)
+    padded_samples = pad_sequences(tokenizedSamples, maxlen=WORDS_PER_SAMPLE_SIZE)
 
     tokenized_labels = to_categorical(np.asarray(labels))
 
     print('Shape of padded_samples tensor:', padded_samples.shape)
     print('Shape of tokenized_labels tensor:', tokenized_labels.shape)
 
-    return tokenized_labels, padded_samples, tokenizer
+    return tokenized_labels, padded_samples, word_index
+
+def saveObject(obj, name):
+    np.save(BASE_DIR + '/europarl-v7/'+ name + '.npy', obj)
+
+def loadObject(name):
+    """
+
+    :rtype: dict
+    """
+    return np.load(BASE_DIR + '/europarl-v7/'+ name + '.npy').item()
 
 
 # split the data into a training set and a validation set
@@ -196,10 +231,10 @@ def prepareEmbeddingMatrix(word_index, embeddings_index, nb_words):
 
 # load pre-trained word embeddings into an Embedding layer
 # note that we set trainable = False so as to keep the embeddings fixed
-def createEmbeddingLayer(tokenizer):
+def createEmbeddingLayer(word_index):
     embeddings_index = indexEmbeddingWordVectors()
-    nb_words = min(MAX_NB_WORDS, len(tokenizer.word_index))
-    embedding_matrix = prepareEmbeddingMatrix(tokenizer.word_index, embeddings_index, nb_words)
+    nb_words = min(MAX_NB_WORDS, len(word_index))
+    embedding_matrix = prepareEmbeddingMatrix(word_index, embeddings_index, nb_words)
     return Embedding(nb_words,
                                 EMBEDDING_DIM,
                                 weights=[embedding_matrix],
@@ -207,42 +242,47 @@ def createEmbeddingLayer(tokenizer):
                                 trainable=False, input_shape=(WORDS_PER_SAMPLE_SIZE,))
 
 
-def createModel(tokenizer):
+def createModel(word_index):
     print('Creating model.')
     model = Sequential()
-    model.add(createEmbeddingLayer(tokenizer))
-    model.add(Conv1D(2048, 4, activation='relu'))
+    model.add(createEmbeddingLayer(word_index))
+    model.add(Conv1D(2048, 3, activation='relu'))
     model.add(Dropout(0.25))
-    model.add(Conv1D(1024, 4, activation='relu'))
+    model.add(Conv1D(1024, 5, activation='relu'))
+    model.add(Dropout(0.25))
+    model.add(Conv1D(512, 3, activation='relu'))
     model.add(Dropout(0.25))
     model.add(Flatten())
-    model.add(Dense(512, activation='relu'))
-    model.add(Dropout(0.25))
     model.add(Dense(LABELS_COUNT, activation='softmax'))
     # alternative optimizer: rmsprop, adam
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
     return model
 
 
-def trainModel(model, tokenizer, samples, x_train, y_train, x_val, y_val):
+def trainModel(model, word_index, samples, x_train, y_train, x_val, y_val):
     print("Training")
-    for i in range(1,4):
+    EPOCHS = 4
+    for i in range(1, EPOCHS):
         model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=1, batch_size=128)
-        customTest(model, tokenizer, samples)
-    # model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
+        customTest(samples)
+    model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     return model
 
 
-def customTest(model, tokenizer, samples):
-    printSampleEvaluation(model, tokenizer, 'Altman was named president of Y Combinator, which funded the startup he co-founded in the first batch of funded companies in 2005.')
-    printSampleEvaluation(model, tokenizer, 'In a 2014 blog post, Altman stated that the total valuation of all Y Combinator companies had surpassed $65 billion, including well-known companies like Airbnb, Dropbox, Zenefits and Stripe.')
-    printSampleEvaluation(model, tokenizer, 'In September 2016 Altman announced that he will be president of YC Group, which includes Y Combinator and other units.')
+def customTest(samples):
+    word_index = loadWordIndex()
+    model = createModel(word_index)
+    model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
+    printSampleEvaluation(model, word_index, 'Altman was named president of Y Combinator, which funded the startup he co-founded in the first batch of funded companies in 2005.')
+    printSampleEvaluation(model, word_index, 'In a 2014 blog post, Altman stated that the total valuation of all Y Combinator companies had surpassed $65 billion, including well-known companies like Airbnb, Dropbox, Zenefits and Stripe.')
+    printSampleEvaluation(model, word_index, 'In September 2016 Altman announced that he will be president of YC Group, which includes Y Combinator and other units.')
     for sample in samples[:100]:
-        printSampleEvaluation(model, tokenizer, sample)
+        printSampleEvaluation(model, word_index, sample)
 
 
-def printSampleEvaluation(model, tokenizer, sample):
-    tokenized = pad_sequences(tokenizer.texts_to_sequences(sample), maxlen=WORDS_PER_SAMPLE_SIZE)
+def printSampleEvaluation(model, word_index, sample):
+    sequences = texts_to_sequences(word_index, [sample], MAX_NB_WORDS)
+    tokenized = pad_sequences(sequences, maxlen=WORDS_PER_SAMPLE_SIZE)
     preds = list(model.predict(tokenized)[0])
     index = preds.index(max(preds))
     for i, word in enumerate(sample.split(' ')):
@@ -251,7 +291,7 @@ def printSampleEvaluation(model, tokenizer, sample):
             if index == 0:
                 print('*', end=' ')
             else:
-                print('', end=' ')
+                print('|', end=' ')
     if index == WORDS_PER_SAMPLE_SIZE:
         print(" *None*", end=' ')
     print('')
@@ -261,10 +301,10 @@ def main():
     # cleanData()
     # sampleData()
     labels, samples = loadSamples()
-    tokenized_labels, tokenized_samples, tokenizer = tokenize(labels, samples)
+    tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
     x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
-    model = createModel(tokenizer)
-    trainModel(model, tokenizer, samples, x_train, y_train, x_val, y_val)
-
+    model = createModel(word_index)
+    trainModel(model, word_index, samples, x_train, y_train, x_val, y_val)
+    customTest(samples)
 
 main()
