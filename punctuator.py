@@ -8,6 +8,7 @@ from __future__ import print_function
 
 import os
 import re
+from collections import OrderedDict
 
 import numpy as np
 
@@ -45,14 +46,17 @@ VOCAB_SIZE = 8192
 # Clean and label data
 
 def cleanData(inputFile='europarl-v7.en'):
-    mappings = {
-        re.compile('\([^)]*\)'): '',
-        re.compile('’'): '\'',
-        re.compile('[-—]'): ' ',
-        re.compile('[^a-z0-9A-Z\',\.?! ]'): '',
-        re.compile('^$|^\.$'): '',
-        re.compile('.*Resumption of the session.*|.*VOTE.*|^Agenda$.*report[ ]*$'): '',
-    }
+    print("Cleaning data " + inputFile)
+    mappings = OrderedDict([
+        (re.compile("['’]"), "'"),
+        (re.compile(" '([^']*)'"), ' \g<1>'),
+        (re.compile("'"), " ' "),
+        (re.compile('\([^)]*\)'), ''),
+        (re.compile('[-—]'), ' '),
+        (re.compile('[^a-z0-9A-Z\',\.?! ]'), ''),
+        (re.compile('^$|^\.$'), ''),
+        (re.compile('.*Resumption of the session.*|.*VOTE.*|^Agenda$.*report[ ]*$'), ''),
+    ])
     with open(BASE_DIR + "/europarl-v7/" + inputFile + '.clean.txt', 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/" + inputFile, encoding="utf8") as input:
             for fullLine in input:
@@ -68,7 +72,7 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
     import itertools
     from random import randint
 
-    print("Sampling data...")
+    print("Sampling data " + inputFile + ' into ' + outputFile)
     LOG_SAMPLE_NUM_STEP = 10000
     DOT_LIKE = re.compile('.*[,;.!?]')
 
@@ -115,7 +119,7 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
 
 
 def loadSamples(samplesCount, source='europarl-v7.en.samples.txt'):
-    print('Loading maximum ' + str(samplesCount) + ' samples')
+    print('Loading maximum ' + str(samplesCount) + ' samples from ' + source)
     with open(BASE_DIR + "/europarl-v7/" + source, 'r', encoding="utf8") as input:
         samples = []
         labels = []
@@ -311,9 +315,9 @@ def printSampleEvaluation(model, word_index, sample):
 
 
 def main():
-    # cleanData()
-    sampleData(4000000, weighted=False)
-    labels, samples = loadSamples(4000000)
+    cleanData()
+    sampleData(1000000)
+    labels, samples = loadSamples(1000000)
     tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
     x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
     model = createModel(word_index)
