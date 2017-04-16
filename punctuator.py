@@ -24,6 +24,7 @@ from keras.models import Sequential
 BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
+DOT_LIKE = ',;.!?'
 WORDS_PER_SAMPLE_SIZE = 20
 DETECTION_INDEX = int(WORDS_PER_SAMPLE_SIZE / 2)
 LABELS_COUNT = 2
@@ -49,8 +50,9 @@ def cleanData(inputFile='europarl-v7.en'):
     print("Cleaning data " + inputFile)
     mappings = OrderedDict([
         (re.compile("['’]"), "'"),
+        (re.compile("' s([" + DOT_LIKE + " ])"), "'s\g<1>"),
         (re.compile(" '([^']*)'"), ' \g<1>'),
-        (re.compile("'"), " ' "),
+        (re.compile("'"), " '"),
         (re.compile('\([^)]*\)'), ''),
         (re.compile('[-—]'), ' '),
         (re.compile('[^a-z0-9A-Z\',\.?! ]'), ''),
@@ -74,7 +76,7 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
 
     print("Sampling data " + inputFile + ' into ' + outputFile)
     LOG_SAMPLE_NUM_STEP = 10000
-    DOT_LIKE = re.compile('.*[,;.!?]')
+    DOT_LIKE_REGEX = re.compile('.*[' + DOT_LIKE + ']')
 
     def incrementSampleNum(sampleNum):
         sampleNum += 1
@@ -106,7 +108,7 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
                 window.append(word)
                 window.pop(0)
                 middle = window[-DETECTION_INDEX]
-                if DOT_LIKE.match(middle) is not None:
+                if DOT_LIKE_REGEX.match(middle) is not None:
                     label = True
                 else:
                     label = False
@@ -284,15 +286,6 @@ def test():
     word_index = loadWordIndex()
     model = createModel(word_index)
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
-    # altmanText = 'Altman was named president of Y Combinator, which funded the startup he co-founded in the first batch of funded companies in 2005.'
-    # for numPreWords in range(0, 9):
-    #     testText = altmanText
-    #     for preWordIndex in range(0, numPreWords):
-    #         testText = '_NONSENSE_ ' + testText
-    #     printSampleEvaluation(model, word_index, testText)
-    #     printSampleEvaluation(model, word_index, ' '.join(altmanText.split(' ')[numPreWords:]))
-    # printSampleEvaluation(model, word_index, 'In a 2014 blog post, Altman stated that the total valuation of all Y Combinator companies had surpassed $65 billion, including well-known companies like Airbnb, Dropbox, Zenefits and Stripe.')
-    # printSampleEvaluation(model, word_index, 'In September 2016 Altman announced that he will be president of YC Group, which includes Y Combinator and other units.')
     for sample in samples[:100]:
         printSampleEvaluation(model, word_index, sample)
 
