@@ -262,8 +262,8 @@ def createModel(word_index=None):
     model.add(createEmbeddingLayer(word_index))
     model.add(Conv1D(512, 3, activation='relu'))
     model.add(Dropout(0.25))
-    model.add(Conv1D(128, 5, activation='relu'))
-    model.add(Dropout(0.25))
+    # model.add(Conv1D(128, 5, activation='relu'))
+    # model.add(Dropout(0.25))
     model.add(Flatten())
     model.add(Dense(LABELS_COUNT, activation='softmax'))
     # alternative optimizer: rmsprop, adam
@@ -289,10 +289,10 @@ def test():
     model = createModel()
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
-    print("Was: ['loss', 'acc']: [0.2570645421534985, 0.89210790520781402]")
+    print("Was: ['loss', 'acc']: [0.42975760336879726, 0.83116883235973316]")
     metrics_values = model.evaluate(tokenized_samples, tokenized_labels, 128)
     print(str(model.metrics_names) + ': ' + str(metrics_values))
-    for sample in samples[:5]:
+    for sample in samples[:10]:
         printSampleEvaluation(model, word_index, sample)
 
 
