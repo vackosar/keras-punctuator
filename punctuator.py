@@ -291,7 +291,7 @@ def test():
     model = createModel()
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
-    print("Was: ['loss', 'acc']: [0.63382309770488832, 0.71828172632030673]")
+    print("Was: ['loss', 'acc']: [0.31516934489155862, 0.86413587128127611]")
     metrics_values = model.evaluate(tokenized_samples, tokenized_labels, 128)
     print(str(model.metrics_names) + ': ' + str(metrics_values))
     for sample in samples[:5]:
