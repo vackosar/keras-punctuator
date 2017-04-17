@@ -51,7 +51,7 @@ def cleanData(inputFile='europarl-v7.en'):
     mappings = OrderedDict([
         (re.compile("['’]"), "'"),
         (re.compile("' s([" + DOT_LIKE + " ])"), "'s\g<1>"),
-        (re.compile(" '([^']*)'"), ' \g<1>'),
+        (re.compile(" '([^" + DOT_LIKE + "']*)'"), ' \g<1>'),
         (re.compile("'"), " '"),
         (re.compile('\([^)]*\)'), ''),
         (re.compile('[-—]'), ' '),
@@ -159,17 +159,15 @@ def texts_to_sequences(word_index, texts, num_words):
 def loadWordIndex():
     return loadObject('word_index')
 
-def tokenize(labels, samples):
+def saveWordIndex(samples):
+    tokenizer = Tokenizer(num_words=MAX_NB_WORDS)
+    tokenizer.fit_on_texts(samples)
+    word_index = tokenizer.word_index
+    saveObject(word_index, 'word_index')
+    print('Found %s unique tokens.' % len(word_index))
+    return word_index
 
-    def saveWordIndex(samples):
-        tokenizer = Tokenizer(num_words=MAX_NB_WORDS)
-        tokenizer.fit_on_texts(samples)
-        word_index = tokenizer.word_index
-        saveObject(word_index, 'word_index')
-        print('Found %s unique tokens.' % len(word_index))
-
-    saveWordIndex(samples)
-    word_index = loadWordIndex()
+def tokenize(labels, samples, word_index):
 
     tokenizedSamples = texts_to_sequences(word_index, samples, MAX_NB_WORDS)
     padded_samples = pad_sequences(tokenizedSamples, maxlen=WORDS_PER_SAMPLE_SIZE)
@@ -179,7 +177,7 @@ def tokenize(labels, samples):
     print('Shape of padded_samples tensor:', padded_samples.shape)
     print('Shape of tokenized_labels tensor:', tokenized_labels.shape)
 
-    return tokenized_labels, padded_samples, word_index
+    return tokenized_labels, padded_samples
 
 def saveObject(obj, name):
     np.save(BASE_DIR + '/europarl-v7/'+ name + '.npy', obj)
@@ -281,12 +279,15 @@ def trainModel(model, x_train, y_train, x_val, y_val):
 
 def test():
     cleanData("presuation.txt")
-    sampleData(100, 'presuation.txt.clean.txt', 'test.samples.txt', False)
-    labels, samples = loadSamples(100, 'test.samples.txt')
+    sampleData(200, 'presuation.txt.clean.txt', 'test.samples.txt', False)
+    labels, samples = loadSamples(200, 'test.samples.txt')
     word_index = loadWordIndex()
     model = createModel(word_index)
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
-    for sample in samples[:100]:
+    tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
+    metrics_values = model.evaluate(tokenized_samples, tokenized_labels, 128)
+    print(str(model.metrics_names) + ': ' + str(metrics_values))
+    for sample in samples[:5]:
         printSampleEvaluation(model, word_index, sample)
 
 
@@ -308,13 +309,15 @@ def printSampleEvaluation(model, word_index, sample):
 
 
 def main():
-    cleanData()
-    sampleData(1000000)
-    labels, samples = loadSamples(1000000)
-    tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
-    x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
-    model = createModel(word_index)
-    trainModel(model, x_train, y_train, x_val, y_val)
+    # cleanData()
+    # sampleData(1000000)
+    # labels, samples = loadSamples(1000000)
+    # saveWordIndex(samples)
+    # word_index = loadWordIndex()
+    # tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
+    # x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
+    # model = createModel(word_index)
+    # trainModel(model, x_train, y_train, x_val, y_val)
     test()
 
 main()
