@@ -260,7 +260,7 @@ def createModel(word_index=None):
     print('Creating model.')
     model = Sequential()
     model.add(createEmbeddingLayer(word_index))
-    model.add(Conv1D(512, 3, activation='relu'))
+    model.add(Conv1D(256, 3, activation='relu'))
     model.add(Dropout(0.25))
     model.add(Conv1D(256, 5, activation='relu'))
     model.add(Dropout(0.25))
@@ -289,7 +289,7 @@ def test():
     model = createModel()
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
-    print("Was: ['loss', 'acc']: [0.27120125709058762, 0.90609391276295725]")
+    print("Was: ['loss', 'acc']: [0.3481938215223821, 0.85614386364653872]")
     metrics_values = model.evaluate(tokenized_samples, tokenized_labels, 128)
     print(str(model.metrics_names) + ': ' + str(metrics_values))
     for sample in samples[:5]:
