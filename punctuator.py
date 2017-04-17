@@ -240,18 +240,23 @@ def prepareEmbeddingMatrix(word_index, embeddings_index, nb_words):
 
 # load pre-trained word embeddings into an Embedding layer
 # note that we set trainable = False so as to keep the embeddings fixed
-def createEmbeddingLayer(word_index):
-    embeddings_index = indexEmbeddingWordVectors()
-    nb_words = min(MAX_NB_WORDS, len(word_index))
-    embedding_matrix = prepareEmbeddingMatrix(word_index, embeddings_index, nb_words)
-    return Embedding(nb_words,
-                                EMBEDDING_DIM,
-                                weights=[embedding_matrix],
-                                input_length=WORDS_PER_SAMPLE_SIZE,
-                                trainable=False, input_shape=(WORDS_PER_SAMPLE_SIZE,))
+def createEmbeddingLayer(word_index=None):
+    if word_index is None:
+        return Embedding(MAX_NB_WORDS,
+                              EMBEDDING_DIM,
+                              input_length=WORDS_PER_SAMPLE_SIZE,
+                              trainable=False, input_shape=(WORDS_PER_SAMPLE_SIZE,))
+    else:
+        embeddings_index = indexEmbeddingWordVectors()
+        embedding_matrix = prepareEmbeddingMatrix(word_index, embeddings_index, MAX_NB_WORDS)
+        return Embedding(MAX_NB_WORDS,
+                         EMBEDDING_DIM,
+                         input_length=WORDS_PER_SAMPLE_SIZE,
+                         weights=[embedding_matrix],
+                         trainable=False, input_shape=(WORDS_PER_SAMPLE_SIZE,))
 
 
-def createModel(word_index):
+def createModel(word_index=None):
     print('Creating model.')
     model = Sequential()
     model.add(createEmbeddingLayer(word_index))
@@ -283,7 +288,7 @@ def test():
     sampleData(1000, 'presuation.txt.clean.txt', 'test.samples.txt', False)
     labels, samples = loadSamples(1000, 'test.samples.txt')
     word_index = loadWordIndex()
-    model = createModel(word_index)
+    model = createModel()
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
     print("Was: ['loss', 'acc']: [0.63382309770488832, 0.71828172632030673]")
