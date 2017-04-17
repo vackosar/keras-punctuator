@@ -255,11 +255,11 @@ def createModel(word_index):
     print('Creating model.')
     model = Sequential()
     model.add(createEmbeddingLayer(word_index))
-    model.add(Conv1D(2048, 3, activation='relu'))
+    model.add(Conv1D(1024, 3, activation='relu'))
     model.add(Dropout(0.25))
-    model.add(Conv1D(1024, 5, activation='relu'))
+    model.add(Conv1D(512, 5, activation='relu'))
     model.add(Dropout(0.25))
-    model.add(Conv1D(512, 3, activation='relu'))
+    model.add(Conv1D(256, 3, activation='relu'))
     model.add(Dropout(0.25))
     model.add(Flatten())
     model.add(Dense(LABELS_COUNT, activation='softmax'))
@@ -273,8 +273,8 @@ def trainModel(model, x_train, y_train, x_val, y_val):
     EPOCHS = 2
     for i in range(0, EPOCHS):
         model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=1, batch_size=128)
+        model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
         test()
-    model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     return model
 
 
