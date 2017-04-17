@@ -280,13 +280,13 @@ def trainModel(model, x_train, y_train, x_val, y_val):
 
 def test():
     cleanData("presuation.txt")
-    sampleData(200, 'presuation.txt.clean.txt', 'test.samples.txt', False)
-    labels, samples = loadSamples(200, 'test.samples.txt')
+    sampleData(1000, 'presuation.txt.clean.txt', 'test.samples.txt', False)
+    labels, samples = loadSamples(1000, 'test.samples.txt')
     word_index = loadWordIndex()
     model = createModel(word_index)
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
-    print("Was: ['loss', 'acc']: [0.51279085518708867, 0.74626864930290493]")
+    print("Was: ['loss', 'acc']: [0.63382309770488832, 0.71828172632030673]")
     metrics_values = model.evaluate(tokenized_samples, tokenized_labels, 128)
     print(str(model.metrics_names) + ': ' + str(metrics_values))
     for sample in samples[:5]:
@@ -313,13 +313,13 @@ def printSampleEvaluation(model, word_index, sample):
 def main():
     # cleanData()
     # sampleData(1000000)
-    labels, samples = loadSamples(1000000)
+    # labels, samples = loadSamples(1000000)
     # saveWordIndex(samples)
-    word_index = loadWordIndex()
-    tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
-    x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
-    model = createModel(word_index)
-    trainModel(model, x_train, y_train, x_val, y_val)
+    # word_index = loadWordIndex()
+    # tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
+    # x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
+    # model = createModel(word_index)
+    # trainModel(model, x_train, y_train, x_val, y_val)
     test()
 
 main()
