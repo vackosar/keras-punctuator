@@ -167,6 +167,7 @@ def saveWordIndex(samples):
     print('Found %s unique tokens.' % len(word_index))
     return word_index
 
+
 def tokenize(labels, samples, word_index):
 
     tokenizedSamples = texts_to_sequences(word_index, samples, MAX_NB_WORDS)
@@ -311,13 +312,13 @@ def printSampleEvaluation(model, word_index, sample):
 def main():
     # cleanData()
     # sampleData(1000000)
-    # labels, samples = loadSamples(1000000)
+    labels, samples = loadSamples(1000000)
     # saveWordIndex(samples)
-    # word_index = loadWordIndex()
-    # tokenized_labels, tokenized_samples, word_index = tokenize(labels, samples)
-    # x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
-    # model = createModel(word_index)
-    # trainModel(model, x_train, y_train, x_val, y_val)
+    word_index = loadWordIndex()
+    tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
+    x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
+    model = createModel(word_index)
+    trainModel(model, x_train, y_train, x_val, y_val)
     test()
 
 main()
