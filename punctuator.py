@@ -92,32 +92,39 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
 
         return ("".join(group) for pred, group in byte_stream if not pred)
 
+    def samplingTestValues(sampleNum, sampleCount):
+        return int(sampleCount * 0.8) < sampleNum
+
     def write(output, window, label):
         output.write(' '.join(window))
         output.write(' ' + str(label))
         output.write('\n')
 
     with open(BASE_DIR + "/europarl-v7/" + outputFile, 'w', encoding="utf8") as output:
-        with open(BASE_DIR + "/europarl-v7/" + inputFile, 'r', encoding="utf8") as input:
-            window = []
-            sampleNum = 0
-            for word in readwords(input):
-                if len(window) < WORDS_PER_SAMPLE_SIZE:
-                    window.append(word)
-                    continue
-                window.append(word)
-                window.pop(0)
-                middle = window[-DETECTION_INDEX]
-                if DOT_LIKE_REGEX.match(middle) is not None:
-                    label = True
-                else:
-                    label = False
-                    if weighted and randint(0, 9) < 9:
+        with open(BASE_DIR + "/europarl-v7/" + outputFile + ".test", 'w', encoding="utf8") as testOutput:
+            with open(BASE_DIR + "/europarl-v7/" + inputFile, 'r', encoding="utf8") as input:
+                window = []
+                sampleNum = 0
+                for word in readwords(input):
+                    if len(window) < WORDS_PER_SAMPLE_SIZE:
+                        window.append(word)
                         continue
-                write(output, window, label)
-                sampleNum = incrementSampleNum(sampleNum)
-                if sampleNum > sampleCount:
-                    break
+                    window.append(word)
+                    window.pop(0)
+                    middle = window[-DETECTION_INDEX]
+                    if DOT_LIKE_REGEX.match(middle) is not None:
+                        label = True
+                    else:
+                        label = False
+                        if not samplingTestValues(sampleNum, sampleCount) and randint(0, 9) < 9:
+                            continue
+                    if samplingTestValues(sampleNum, sampleCount):
+                        write(testOutput, window, label)
+                    else:
+                        write(output, window, label)
+                    sampleNum = incrementSampleNum(sampleNum)
+                    if sampleNum > sampleCount:
+                        break
 
 
 def loadSamples(samplesCount, source='europarl-v7.en.samples.txt'):
@@ -260,9 +267,9 @@ def createModel(word_index=None):
     print('Creating model.')
     model = Sequential()
     model.add(createEmbeddingLayer(word_index))
-    model.add(Conv1D(512, 4, activation='relu'))
+    model.add(Conv1D(512, 3, activation='relu'))
     model.add(Dropout(0.25))
-    # model.add(Conv1D(256, 5, activation='relu'))
+    # model.add(Conv1D(256, 3, activation='relu'))
     # model.add(Dropout(0.25))
     model.add(Flatten())
     model.add(Dense(LABELS_COUNT, activation='softmax'))
@@ -282,9 +289,7 @@ def trainModel(model, x_train, y_train, x_val, y_val):
 
 
 def test():
-    cleanData("presuation.txt")
-    sampleData(1000, 'presuation.txt.clean.txt', 'test.samples.txt', False)
-    labels, samples = loadSamples(1000, 'test.samples.txt')
+    labels, samples = loadSamples(15000, 'europarl-v7.en.samples.txt.test')
     word_index = loadWordIndex()
     model = createModel()
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
@@ -315,8 +320,8 @@ def printSampleEvaluation(model, word_index, sample):
 
 def main():
     # cleanData()
-    # sampleData(1000000)
-    labels, samples = loadSamples(1000000)
+    # sampleData(1500000)
+    labels, samples = loadSamples(1500000)
     # saveWordIndex(samples)
     word_index = loadWordIndex()
     tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
