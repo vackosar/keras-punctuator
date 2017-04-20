@@ -278,7 +278,7 @@ def createModel(word_index=None):
 
 def trainModel(model, x_train, y_train, x_val, y_val):
     print("Training")
-    EPOCHS = 2
+    EPOCHS = 3
     for i in range(0, EPOCHS):
         model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=1, batch_size=128)
         model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
@@ -295,37 +295,38 @@ def test():
     print("Was: ['loss', 'acc']: [0.25906308201835693, 0.89800679950298978]")
     metrics_values = model.evaluate(tokenized_samples, tokenized_labels, 128)
     print(str(model.metrics_names) + ': ' + str(metrics_values))
-    for sample in samples[:10]:
-        printSampleEvaluation(model, word_index, sample)
 
+    for i in range(0, WORDS_PER_SAMPLE_SIZE - DETECTION_INDEX + 1):
+        sample = samples[i].split(' ')[:DETECTION_INDEX + i]
+        for j in range(0, WORDS_PER_SAMPLE_SIZE - DETECTION_INDEX - i):
+            sample.insert(0, "_____")
+        samples.insert(i, ' '.join(sample))
 
-def printSampleEvaluation(model, word_index, sample):
-    sequences = texts_to_sequences(word_index, [sample], MAX_NB_WORDS)
-    tokenized = pad_sequences(sequences, maxlen=WORDS_PER_SAMPLE_SIZE)
-    preds = list(model.predict(tokenized)[0])
-    index = preds.index(max(preds))
-    for i, word in enumerate(sample.split(' ')):
-        print(word, end=' ')
-        if i == DETECTION_INDEX:
-            if index == 0:
-                print('*', end=' ')
-            else:
-                print('|', end=' ')
-    if index == WORDS_PER_SAMPLE_SIZE:
-        print(" *None*", end=' ')
-    print('')
+    DOT_LIKE_REGEX = re.compile('[' + DOT_LIKE + ']')
+    for sample in samples[:500]:
+        sequences = texts_to_sequences(word_index, [sample], MAX_NB_WORDS)
+        tokenized = pad_sequences(sequences, maxlen=WORDS_PER_SAMPLE_SIZE)
+        preds = list(model.predict(tokenized)[0])
+        index = preds.index(max(preds))
+        punctuatedWord = sample.split(' ')[DETECTION_INDEX]
+        word = DOT_LIKE_REGEX.sub('', punctuatedWord)
+        print(word, end='')
+        if (index == 1):
+            print(".", end=' ')
+        else:
+            print("", end=' ')
 
 
 def main():
     # cleanData()
     # sampleData(1500000)
-    labels, samples = loadSamples(1500000)
+    # labels, samples = loadSamples(1500000)
     # saveWordIndex(samples)
-    word_index = loadWordIndex()
-    tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
-    x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
-    model = createModel(word_index)
-    trainModel(model, x_train, y_train, x_val, y_val)
+    # word_index = loadWordIndex()
+    # tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
+    # x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
+    # model = createModel(word_index)
+    # trainModel(model, x_train, y_train, x_val, y_val)
     test()
 
 main()
