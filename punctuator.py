@@ -25,7 +25,7 @@ BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
 DOT_LIKE = ',;.!?'
-WORDS_PER_SAMPLE_SIZE = 20
+WORDS_PER_SAMPLE_SIZE = 30
 DETECTION_INDEX = int(WORDS_PER_SAMPLE_SIZE / 2)
 LABELS_COUNT = 2
 MAX_NB_WORDS = 20000
@@ -70,7 +70,7 @@ def cleanData(inputFile='europarl-v7.en'):
                 output.write(line + " ")
 
 
-def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", outputFile="europarl-v7.en.samples.txt", weighted=True):
+def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", outputFile="europarl-v7.en.samples.txt", weighted=True, testPercentage=0.8):
     import itertools
     from random import randint
 
@@ -92,14 +92,17 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
 
         return ("".join(group) for pred, group in byte_stream if not pred)
 
-    def samplingTestValues(sampleNum, sampleCount):
-        return int(sampleCount * 0.8) < sampleNum
+    def samplingTestValues(sampleNum, sampleCount, testPercentage=0.8):
+        return int(sampleCount * testPercentage) < sampleNum
 
     def write(output, window, label):
         output.write(' '.join(window))
         output.write(' ' + str(label))
         output.write('\n')
 
+    samples = []
+    labels = []
+    DOT_WEIGHT = 5
     with open(BASE_DIR + "/europarl-v7/" + outputFile, 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/" + outputFile + ".test", 'w', encoding="utf8") as testOutput:
             with open(BASE_DIR + "/europarl-v7/" + inputFile, 'r', encoding="utf8") as input:
@@ -109,22 +112,26 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
                     if len(window) < WORDS_PER_SAMPLE_SIZE:
                         window.append(word)
                         continue
-                    window.append(word)
-                    window.pop(0)
+                    if sampleNum != 0:
+                        window.append(word)
+                        window.pop(0)
                     middle = window[-DETECTION_INDEX]
                     if DOT_LIKE_REGEX.match(middle) is not None:
                         label = True
                     else:
                         label = False
-                        if not samplingTestValues(sampleNum, sampleCount) and randint(0, 9) < 9:
+                        if not samplingTestValues(sampleNum, sampleCount, testPercentage) and randint(0, 9) < DOT_WEIGHT and weighted:
                             continue
-                    if samplingTestValues(sampleNum, sampleCount):
+                    if samplingTestValues(sampleNum, sampleCount, testPercentage):
                         write(testOutput, window, label)
                     else:
+                        samples.append(' '.join(window))
+                        labels.append(label)
                         write(output, window, label)
                     sampleNum = incrementSampleNum(sampleNum)
                     if sampleNum > sampleCount:
                         break
+    return labels, samples
 
 
 def loadSamples(samplesCount, source='europarl-v7.en.samples.txt'):
@@ -267,7 +274,7 @@ def createModel(word_index=None):
     print('Creating model.')
     model = Sequential()
     model.add(createEmbeddingLayer(word_index))
-    model.add(Conv1D(256, 3, activation='relu'))
+    model.add(Conv1D(512, 3, activation='relu'))
     model.add(Dropout(0.25))
     model.add(Flatten())
     model.add(Dense(LABELS_COUNT, activation='softmax'))
@@ -286,17 +293,22 @@ def trainModel(model, x_train, y_train, x_val, y_val):
     return model
 
 
-def test():
-    labels, samples = loadSamples(100000, 'europarl-v7.en.samples.txt.test')
+def test(file='europarl-v7.en.samples.txt.test', evaluate=True):
+    labels, samples = loadSamples(100000, file)
     word_index = loadWordIndex()
     model = createModel()
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
     print("Was: ['loss', 'acc']: [0.25906308201835693, 0.89800679950298978]")
-    metrics_values = model.evaluate(tokenized_samples, tokenized_labels, 128)
-    print(str(model.metrics_names) + ': ' + str(metrics_values))
+    if evaluate:
+        metrics_values = model.evaluate(tokenized_samples, tokenized_labels, 128)
+        print(str(model.metrics_names) + ': ' + str(metrics_values))
     punctuate(samples, word_index, model)
 
+def sampleAndTest(file, evaluate):
+    sampledFile = file + ".sampled"
+    sampleData(10000, file, sampledFile, False, 1)
+    test(sampledFile, evaluate)
 
 def punctuate(samples, word_index, model):
     for i in range(0, WORDS_PER_SAMPLE_SIZE - DETECTION_INDEX):
@@ -328,14 +340,16 @@ def punctuate(samples, word_index, model):
 
 def main():
     # cleanData()
-    # sampleData(3000000)
-    labels, samples = loadSamples(3000000)
-    # saveWordIndex(samples)
-    word_index = loadWordIndex()
+    labels, samples = sampleData(3000000)
+    # labels, samples = loadSamples(3000000)
+    word_index = saveWordIndex(samples)
+    # word_index = loadWordIndex()
     tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
     x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
     model = createModel(word_index)
     trainModel(model, x_train, y_train, x_val, y_val)
     test()
+    sampleAndTest('ted-ai.txt', False)
+    sampleAndTest('advice.txt', False)
 
 main()
