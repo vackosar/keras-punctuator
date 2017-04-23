@@ -25,6 +25,7 @@ BASE_DIR = 'D:\\IdeaProjects\\data'
 GLOVE_DIR = BASE_DIR + '/glove.6B/'
 TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
 DOT_LIKE = ',;.!?'
+DOT_LIKE_AND_SPACE = ',;.!? '
 WORDS_PER_SAMPLE_SIZE = 30
 DETECTION_INDEX = int(WORDS_PER_SAMPLE_SIZE / 2)
 LABELS_COUNT = 2
@@ -50,16 +51,18 @@ def cleanData(inputFile='europarl-v7.en'):
     print("Cleaning data " + inputFile)
     mappings = OrderedDict([
         (re.compile("['’]"), "'"),
-        (re.compile("' s([" + DOT_LIKE + " ])"), "'s\g<1>"),
+        (re.compile("' s([" + DOT_LIKE_AND_SPACE + "])"), "'s\g<1>"),
+        (re.compile("n't"), " n't"),
         (re.compile(" '([^" + DOT_LIKE + "']*)'"), ' \g<1>'),
-        (re.compile("'"), " '"),
+        (re.compile("'([^t])"), " '\g<1>"),
         (re.compile('\([^)]*\)'), ''),
         (re.compile('[-—]'), ' '),
         (re.compile('[^a-z0-9A-Z\',\.?! ]'), ''),
         (re.compile('^$|^\.$'), ''),
         (re.compile('.*Resumption of the session.*|.*VOTE.*|^Agenda$.*report[ ]*$'), ''),
     ])
-    with open(BASE_DIR + "/europarl-v7/" + inputFile + '.clean.txt', 'w', encoding="utf8") as output:
+    cleanFile = inputFile + '.clean.txt'
+    with open(BASE_DIR + "/europarl-v7/" + cleanFile, 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/" + inputFile, encoding="utf8") as input:
             for fullLine in input:
                 line = fullLine.rstrip()
@@ -68,6 +71,7 @@ def cleanData(inputFile='europarl-v7.en'):
                 if len(line) == 0:
                     continue
                 output.write(line + " ")
+    return cleanFile
 
 
 def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", outputFile="europarl-v7.en.samples.txt", weighted=True, testPercentage=0.8):
@@ -77,6 +81,7 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
     print("Sampling data " + inputFile + ' into ' + outputFile)
     LOG_SAMPLE_NUM_STEP = 10000
     DOT_LIKE_REGEX = re.compile('.*[' + DOT_LIKE + ']')
+    DOT_WEIGHT = 1
 
     def incrementSampleNum(sampleNum):
         sampleNum += 1
@@ -100,9 +105,19 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
         output.write(' ' + str(label))
         output.write('\n')
 
+    def skipNonDotSample(weighted, sampleNum, sampleCount, testPercentage):
+        """ Skip non dot samples to prevent local minima of no dots. """
+        return \
+            weighted \
+            and not samplingTestValues(sampleNum, sampleCount, testPercentage) \
+            and randint(0, 9) < DOT_WEIGHT
+
+    def skip():
+        """ Skips for more diverse input. """
+        return randint(0, 9) < 8
+
     samples = []
     labels = []
-    DOT_WEIGHT = 5
     with open(BASE_DIR + "/europarl-v7/" + outputFile, 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/" + outputFile + ".test", 'w', encoding="utf8") as testOutput:
             with open(BASE_DIR + "/europarl-v7/" + inputFile, 'r', encoding="utf8") as input:
@@ -116,11 +131,13 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
                         window.append(word)
                         window.pop(0)
                     middle = window[-DETECTION_INDEX]
+                    if skip():
+                        continue
                     if DOT_LIKE_REGEX.match(middle) is not None:
                         label = True
                     else:
                         label = False
-                        if not samplingTestValues(sampleNum, sampleCount, testPercentage) and randint(0, 9) < DOT_WEIGHT and weighted:
+                        if skipNonDotSample(weighted, sampleNum, sampleCount, testPercentage):
                             continue
                     if samplingTestValues(sampleNum, sampleCount, testPercentage):
                         write(testOutput, window, label)
@@ -306,8 +323,9 @@ def test(file='europarl-v7.en.samples.txt.test', evaluate=True):
     punctuate(samples, word_index, model)
 
 def sampleAndTest(file, evaluate):
-    sampledFile = file + ".sampled"
-    sampleData(10000, file, sampledFile, False, 1)
+    cleanFile = cleanData(file)
+    sampledFile = cleanFile + ".sampled"
+    sampleData(10000, cleanFile, sampledFile, False, 1)
     test(sampledFile, evaluate)
 
 def punctuate(samples, word_index, model):
@@ -339,7 +357,7 @@ def punctuate(samples, word_index, model):
 
 
 def main():
-    # cleanData()
+    cleanData()
     labels, samples = sampleData(3000000)
     # labels, samples = loadSamples(3000000)
     word_index = saveWordIndex(samples)
