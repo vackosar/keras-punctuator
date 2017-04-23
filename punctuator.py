@@ -111,7 +111,7 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
 
     def skip(weighted):
         """ Skips for more diverse input. """
-        return weighted and randint(0, 9) < 6
+        return weighted and randint(0, 9) < 3
 
     samples = []
     labels = []
@@ -301,7 +301,7 @@ def createModel(word_index=None):
 
 def trainModel(model, x_train, y_train, x_val, y_val):
     print("Training")
-    EPOCHS = 3
+    EPOCHS = 1
     for i in range(0, EPOCHS):
         model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=1, batch_size=128)
         model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
@@ -309,23 +309,30 @@ def trainModel(model, x_train, y_train, x_val, y_val):
     return model
 
 
-def test(file='europarl-v7.en.samples.txt.test', evaluate=True):
+def test(file='europarl-v7.en.samples.txt.test'):
     labels, samples = loadSamples(100000, file)
     word_index = loadWordIndex()
     model = createModel()
     model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
     tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
     print("Was: ['loss', 'acc']: [0.25906308201835693, 0.89800679950298978]")
-    if evaluate:
-        metrics_values = model.evaluate(tokenized_samples, tokenized_labels, 128)
-        print(str(model.metrics_names) + ': ' + str(metrics_values))
-    punctuate(samples, word_index, model)
+    metrics_values = model.evaluate(tokenized_samples, tokenized_labels, 128)
+    print(str(model.metrics_names) + ': ' + str(metrics_values))
+    print(punctuate(samples[:500], word_index, model))
 
-def sampleAndTest(file, evaluate):
+
+def punctuateFile(file):
     cleanFile = cleanData(file)
     sampledFile = cleanFile + ".sampled"
-    sampleData(10000, cleanFile, sampledFile, False, 1)
-    test(sampledFile, evaluate)
+    labels, samples = sampleData(10000000, cleanFile, sampledFile, False, 1)
+    word_index = loadWordIndex()
+    model = createModel()
+    model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
+    text = punctuate(samples, word_index, model)
+    print(text)
+    with open(BASE_DIR + "/europarl-v7/" + file + '.punctuated.txt', 'w', encoding="utf8") as output:
+        output.write(text)
+
 
 def punctuate(samples, word_index, model):
     for i in range(0, WORDS_PER_SAMPLE_SIZE - DETECTION_INDEX):
@@ -336,7 +343,8 @@ def punctuate(samples, word_index, model):
 
     DOT_LIKE_REGEX = re.compile('[' + DOT_LIKE + ']')
     capitalize = True
-    for sample in samples[:500]:
+    text = ''
+    for sample in samples:
         sequences = texts_to_sequences(word_index, [sample], MAX_NB_WORDS)
         tokenized = pad_sequences(sequences, maxlen=WORDS_PER_SAMPLE_SIZE)
         preds = list(model.predict(tokenized)[0])
@@ -344,21 +352,22 @@ def punctuate(samples, word_index, model):
         punctuatedWord = sample.split(' ')[DETECTION_INDEX]
         word = DOT_LIKE_REGEX.sub('', punctuatedWord).lower()
         if capitalize:
-            print(word.capitalize(), end='')
+            text += word.capitalize()
         else:
-            print(word, end='')
-        if (index == 1):
-            print(".", end=' ')
+            text += word
+        if index == 1:
+            text += '. '
             capitalize = True
         else:
-            print("", end=' ')
+            text += ' '
             capitalize = False
+    return text
 
 
 def main():
     # cleanData()
-    labels, samples = sampleData(3000000)
-    # labels, samples = loadSamples(3000000)
+    labels, samples = sampleData(10000000, weighted=False)
+    # labels, samples = loadSamples(10000000)
     word_index = saveWordIndex(samples)
     # word_index = loadWordIndex()
     tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
@@ -366,7 +375,7 @@ def main():
     model = createModel(word_index)
     trainModel(model, x_train, y_train, x_val, y_val)
     # test()
-    sampleAndTest('ted-ai.txt', False)
-    sampleAndTest('advice.txt', False)
+    punctuateFile('ted-ai.txt')
+    punctuateFile('advice.txt')
 
 main()
