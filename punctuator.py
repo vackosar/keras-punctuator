@@ -335,11 +335,15 @@ def punctuateFile(file):
 
 
 def punctuate(samples, word_index, model):
-    for i in range(0, WORDS_PER_SAMPLE_SIZE - DETECTION_INDEX):
-        sample = samples[i].split(' ')[:DETECTION_INDEX + i]
-        for j in range(0, WORDS_PER_SAMPLE_SIZE - DETECTION_INDEX - i):
-            sample.insert(0, "_____")
-        samples.insert(i, ' '.join(sample))
+    firstSample = samples[0].split(' ')
+    lastSample = samples[len(samples) - 1].split(' ')
+
+    for i in range(1, DETECTION_INDEX + 1):
+        preSample = lastSample[WORDS_PER_SAMPLE_SIZE - i:] + firstSample[:WORDS_PER_SAMPLE_SIZE - i]
+        samples.insert(0, ' '.join(preSample))
+        if i != DETECTION_INDEX:
+            postSample = lastSample[i:] + firstSample[:i]
+            samples.append(' '.join(postSample))
 
     DOT_LIKE_REGEX = re.compile('[' + DOT_LIKE + ']')
     capitalize = True
@@ -366,14 +370,14 @@ def punctuate(samples, word_index, model):
 
 def main():
     # cleanData()
-    labels, samples = sampleData(10000000, weighted=False)
+    # labels, samples = sampleData(10000000, weighted=False)
     # labels, samples = loadSamples(10000000)
-    word_index = saveWordIndex(samples)
+    # word_index = saveWordIndex(samples)
     # word_index = loadWordIndex()
-    tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
-    x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
-    model = createModel(word_index)
-    trainModel(model, x_train, y_train, x_val, y_val)
+    # tokenized_labels, tokenized_samples = tokenize(labels, samples, word_index)
+    # x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
+    # model = createModel(word_index)
+    # trainModel(model, x_train, y_train, x_val, y_val)
     # test()
     punctuateFile('ted-ai.txt')
     punctuateFile('advice.txt')
