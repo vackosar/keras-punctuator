@@ -81,7 +81,6 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
     print("Sampling data " + inputFile + ' into ' + outputFile)
     LOG_SAMPLE_NUM_STEP = 10000
     DOT_LIKE_REGEX = re.compile('.*[' + DOT_LIKE + ']')
-    DOT_WEIGHT = 1
 
     def incrementSampleNum(sampleNum):
         sampleNum += 1
@@ -105,19 +104,18 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
         output.write(' ' + str(label))
         output.write('\n')
 
-    def skipNonDotSample(weighted, sampleNum, sampleCount, testPercentage):
+    def skipNonDotSample(weighted):
+        DOT_WEIGHT = 1
         """ Skip non dot samples to prevent local minima of no dots. """
-        return \
-            weighted \
-            and not samplingTestValues(sampleNum, sampleCount, testPercentage) \
-            and randint(0, 9) < DOT_WEIGHT
+        return weighted and randint(0, 9) < DOT_WEIGHT
 
-    def skip():
+    def skip(weighted):
         """ Skips for more diverse input. """
-        return randint(0, 9) < 8
+        return weighted and randint(0, 9) < 6
 
     samples = []
     labels = []
+    samplingTestValues = False
     with open(BASE_DIR + "/europarl-v7/" + outputFile, 'w', encoding="utf8") as output:
         with open(BASE_DIR + "/europarl-v7/" + outputFile + ".test", 'w', encoding="utf8") as testOutput:
             with open(BASE_DIR + "/europarl-v7/" + inputFile, 'r', encoding="utf8") as input:
@@ -131,22 +129,23 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
                         window.append(word)
                         window.pop(0)
                     middle = window[-DETECTION_INDEX]
-                    if skip():
+                    if skip(weighted):
                         continue
                     if DOT_LIKE_REGEX.match(middle) is not None:
                         label = True
                     else:
                         label = False
-                        if skipNonDotSample(weighted, sampleNum, sampleCount, testPercentage):
-                            continue
-                    if samplingTestValues(sampleNum, sampleCount, testPercentage):
+                    if samplingTestValues:
                         write(testOutput, window, label)
                     else:
                         samples.append(' '.join(window))
                         labels.append(label)
                         write(output, window, label)
                     sampleNum = incrementSampleNum(sampleNum)
-                    if sampleNum > sampleCount:
+                    if int(sampleCount * testPercentage) < sampleNum + 1:
+                        samplingTestValues = True
+                        weighted = False
+                    if 1 + sampleNum > sampleCount:
                         break
     return labels, samples
 
@@ -357,7 +356,7 @@ def punctuate(samples, word_index, model):
 
 
 def main():
-    cleanData()
+    # cleanData()
     labels, samples = sampleData(3000000)
     # labels, samples = loadSamples(3000000)
     word_index = saveWordIndex(samples)
@@ -366,7 +365,7 @@ def main():
     x_train, y_train, x_val, y_val = splitTrainingAndValidation(tokenized_labels, tokenized_samples)
     model = createModel(word_index)
     trainModel(model, x_train, y_train, x_val, y_val)
-    test()
+    # test()
     sampleAndTest('ted-ai.txt', False)
     sampleAndTest('advice.txt', False)
 
