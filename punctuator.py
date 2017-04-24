@@ -11,6 +11,7 @@ import re
 from collections import OrderedDict
 
 import numpy as np
+import sys
 
 np.random.seed(1337)
 
@@ -22,8 +23,8 @@ from keras.layers import Conv1D, Embedding
 from keras.models import Sequential
 
 BASE_DIR = 'D:\\IdeaProjects\\data'
-GLOVE_DIR = BASE_DIR + '/glove.6B/'
-TEXT_DATA_DIR = BASE_DIR + '/20_newsgroup/'
+GLOVE_DIR = os.path.join(BASE_DIR, '/glove.6B/')
+TEXT_DATA_DIR = os.path.join(BASE_DIR, '/20_newsgroup/')
 DOT_LIKE = ',;.!?'
 DOT_LIKE_AND_SPACE = ',;.!? '
 WORDS_PER_SAMPLE_SIZE = 30
@@ -47,7 +48,7 @@ VOCAB_SIZE = 8192
 
 # Clean and label data
 
-def cleanData(inputFile='europarl-v7.en'):
+def cleanData(inputFile=os.path.join(BASE_DIR, 'europarl-v7.en')):
     print("Cleaning data " + inputFile)
     mappings = OrderedDict([
         (re.compile("['’]"), "'"),
@@ -62,8 +63,8 @@ def cleanData(inputFile='europarl-v7.en'):
         (re.compile('.*Resumption of the session.*|.*VOTE.*|^Agenda$.*report[ ]*$'), ''),
     ])
     cleanFile = inputFile + '.clean.txt'
-    with open(BASE_DIR + "/europarl-v7/" + cleanFile, 'w', encoding="utf8") as output:
-        with open(BASE_DIR + "/europarl-v7/" + inputFile, encoding="utf8") as input:
+    with open(cleanFile, 'w', encoding="utf8") as output:
+        with open(inputFile, encoding="utf8") as input:
             for fullLine in input:
                 line = fullLine.rstrip()
                 for pattern, replacement in mappings.items():
@@ -74,7 +75,12 @@ def cleanData(inputFile='europarl-v7.en'):
     return cleanFile
 
 
-def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", outputFile="europarl-v7.en.samples.txt", weighted=True, testPercentage=0.8):
+def sampleData(
+        sampleCount=3000000,
+        inputFile=os.path.join(BASE_DIR, "/europarl-v7/", "europarl-v7.en.clean.txt"),
+        outputFile=os.path.join(BASE_DIR, "/europarl-v7/", "europarl-v7.en.samples.txt"),
+        weighted=True,
+        testPercentage=0.8):
     import itertools
     from random import randint
 
@@ -116,9 +122,9 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
     samples = []
     labels = []
     samplingTestValues = False
-    with open(BASE_DIR + "/europarl-v7/" + outputFile, 'w', encoding="utf8") as output:
-        with open(BASE_DIR + "/europarl-v7/" + outputFile + ".test", 'w', encoding="utf8") as testOutput:
-            with open(BASE_DIR + "/europarl-v7/" + inputFile, 'r', encoding="utf8") as input:
+    with open(outputFile, 'w', encoding="utf8") as output:
+        with open(outputFile + ".test", 'w', encoding="utf8") as testOutput:
+            with open(inputFile, 'r', encoding="utf8") as input:
                 window = []
                 sampleNum = 0
                 for word in readwords(input):
@@ -150,9 +156,9 @@ def sampleData(sampleCount=3000000, inputFile="europarl-v7.en.clean.txt", output
     return labels, samples
 
 
-def loadSamples(samplesCount, source='europarl-v7.en.samples.txt'):
+def loadSamples(samplesCount, source=os.path.join(BASE_DIR, "/europarl-v7/", 'europarl-v7.en.samples.txt')):
     print('Loading maximum ' + str(samplesCount) + ' samples from ' + source)
-    with open(BASE_DIR + "/europarl-v7/" + source, 'r', encoding="utf8") as input:
+    with open(source, 'r', encoding="utf8") as input:
         samples = []
         labels = []
         for fullLine in input:
@@ -304,12 +310,12 @@ def trainModel(model, xTrain, yTrain, xVal, yVal):
     EPOCHS = 1
     for i in range(0, EPOCHS):
         model.fit(xTrain, yTrain, validation_data=(xVal, yVal), epochs=1, batch_size=128)
-        model.save_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
+        model.save_weights(os.path.join(BASE_DIR, "europarl-v7", "europarl-v7.en.model"))
         test()
     return model
 
 
-def test(file='europarl-v7.en.samples.txt.test'):
+def test(file=os.path.join(BASE_DIR, "europarl-v7", 'europarl-v7.en.samples.txt.test')):
     labels, samples = loadSamples(100000, file)
     wordIndex = loadWordIndex()
     model = createModel()
@@ -327,10 +333,10 @@ def punctuateFile(file):
     labels, samples = sampleData(10000000, cleanFile, sampledFile, False, 1)
     wordIndex = loadWordIndex()
     model = createModel()
-    model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
+    model.load_weights(os.path.join(BASE_DIR, "europarl-v7", "europarl-v7.en.model"))
     text = punctuate(samples, wordIndex, model)
     print(text)
-    with open(BASE_DIR + "/europarl-v7/" + file + '.punctuated.txt', 'w', encoding="utf8") as output:
+    with open(file + '.punctuated.txt', 'w', encoding="utf8") as output:
         output.write(text)
 
 
@@ -370,16 +376,21 @@ def punctuate(samples, wordIndex, model):
 
 def main():
     # cleanData()
-    # labels, samples = sampleData(10000000, weighted=False)
-    labels, samples = loadSamples(10000000)
-    wordIndex = saveWordIndex(samples)
+    # labels, samples = sampleData(20000000, weighted=False)
+    # labels, samples = loadSamples(10000000)
+    # wordIndex = saveWordIndex(samples)
     # wordIndex = loadWordIndex()
     # tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
     # xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
     # model = createModel(wordIndex)
     # trainModel(model, xTrain, yTrain, xVal, yVal)
-    test()
-    punctuateFile('ted-ai.txt')
-    punctuateFile('advice.txt')
+    # test()
+    print(sys.argv)
+    punctuateFile(os.path.join(BASE_DIR, "europarl-v7", 'ted-ai.txt'))
+    punctuateFile(os.path.join(BASE_DIR, "europarl-v7", 'advice.txt'))
 
-main()
+if len(sys.argv) == 2:
+    file = sys.argv[1]
+    punctuateFile(file)
+else:
+    main()
