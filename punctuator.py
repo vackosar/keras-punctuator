@@ -156,7 +156,7 @@ def sampleData(
     return labels, samples
 
 
-def loadSamples(samplesCount, source=os.path.join(BASE_DIR, "/europarl-v7/", 'europarl-v7.en.samples.txt')):
+def loadSamples(samplesCount, source=os.path.join(BASE_DIR, "europarl-v7", 'europarl-v7.en.samples.txt')):
     print('Loading maximum ' + str(samplesCount) + ' samples from ' + source)
     with open(source, 'r', encoding="utf8") as input:
         samples = []
@@ -175,7 +175,7 @@ def loadSamples(samplesCount, source=os.path.join(BASE_DIR, "/europarl-v7/", 'eu
 
 
 def texts_to_sequences(wordIndex, texts, num_words):
-    lastWord = num_words
+    lastWord = num_words - 1
     sequences = []
     for text in texts:
         seq = text_to_word_sequence(text)
@@ -196,6 +196,7 @@ def loadWordIndex():
     return loadObject('wordIndex')
 
 def saveWordIndex(samples):
+    print('Building word index.')
     tokenizer = Tokenizer(num_words=MAX_NB_WORDS)
     tokenizer.fit_on_texts(samples)
     wordIndex = tokenizer.word_index
@@ -205,6 +206,7 @@ def saveWordIndex(samples):
 
 
 def tokenize(labels, samples, wordIndex):
+    print('Tokenizing samples.')
 
     tokenizedSamples = texts_to_sequences(wordIndex, samples, MAX_NB_WORDS)
     paddedSamples = pad_sequences(tokenizedSamples, maxlen=WORDS_PER_SAMPLE_SIZE)
@@ -377,15 +379,14 @@ def punctuate(samples, wordIndex, model):
 def main():
     # cleanData()
     # labels, samples = sampleData(20000000, weighted=False)
-    # labels, samples = loadSamples(10000000)
-    # wordIndex = saveWordIndex(samples)
+    labels, samples = loadSamples(10000000)
+    wordIndex = saveWordIndex(samples)
     # wordIndex = loadWordIndex()
-    # tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
-    # xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
-    # model = createModel(wordIndex)
-    # trainModel(model, xTrain, yTrain, xVal, yVal)
+    tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
+    xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
+    model = createModel(wordIndex)
+    trainModel(model, xTrain, yTrain, xVal, yVal)
     # test()
-    print(sys.argv)
     punctuateFile(os.path.join(BASE_DIR, "europarl-v7", 'ted-ai.txt'))
     punctuateFile(os.path.join(BASE_DIR, "europarl-v7", 'advice.txt'))
 
