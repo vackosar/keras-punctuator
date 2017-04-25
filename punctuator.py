@@ -323,7 +323,7 @@ def test(file=os.path.join(BASE_DIR, "europarl-v7", 'europarl-v7.en.samples.txt.
     model = createModel()
     model.load_weights(os.path.join(BASE_DIR, "europarl-v7/europarl-v7.en.model"))
     tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
-    print("Was: ['loss', 'acc']: [0.26865265584550135, 0.92189078111007028]")
+    print("Was: ['loss', 'acc']: [0.23739479177507825, 0.9305806942025947]")
     metrics_values = model.evaluate(tokenizedSamples, tokenizedLabels, 128)
     print(str(model.metrics_names) + ': ' + str(metrics_values))
     print(punctuate(samples[:500], wordIndex, model))
