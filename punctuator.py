@@ -1,3 +1,5 @@
+#!/home/ubuntu/anaconda3/bin/python
+
 '''
 GloVe embedding data can be found at:
 http://nlp.stanford.edu/data/glove.6B.zip
