@@ -23,8 +23,8 @@ from keras.layers import Conv1D, Embedding
 from keras.models import Sequential
 
 BASE_DIR = 'D:\\IdeaProjects\\data'
-GLOVE_DIR = os.path.join(BASE_DIR, '/glove.6B/')
-TEXT_DATA_DIR = os.path.join(BASE_DIR, '/20_newsgroup/')
+GLOVE_DIR = os.path.join(BASE_DIR, 'glove.6B')
+TEXT_DATA_DIR = os.path.join(BASE_DIR, '20_newsgroup')
 DOT_LIKE = ',;.!?'
 DOT_LIKE_AND_SPACE = ',;.!? '
 WORDS_PER_SAMPLE_SIZE = 30
@@ -77,8 +77,8 @@ def cleanData(inputFile=os.path.join(BASE_DIR, 'europarl-v7.en')):
 
 def sampleData(
         sampleCount=3000000,
-        inputFile=os.path.join(BASE_DIR, "/europarl-v7/", "europarl-v7.en.clean.txt"),
-        outputFile=os.path.join(BASE_DIR, "/europarl-v7/", "europarl-v7.en.samples.txt"),
+        inputFile=os.path.join(BASE_DIR, "europarl-v7", "europarl-v7.en.clean.txt"),
+        outputFile=os.path.join(BASE_DIR, "europarl-v7", "europarl-v7.en.samples.txt"),
         weighted=True,
         testPercentage=0.8):
     import itertools
@@ -321,7 +321,7 @@ def test(file=os.path.join(BASE_DIR, "europarl-v7", 'europarl-v7.en.samples.txt.
     labels, samples = loadSamples(100000, file)
     wordIndex = loadWordIndex()
     model = createModel()
-    model.load_weights(BASE_DIR + "/europarl-v7/europarl-v7.en.model")
+    model.load_weights(os.path.join(BASE_DIR, "europarl-v7/europarl-v7.en.model"))
     tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
     print("Was: ['loss', 'acc']: [0.26865265584550135, 0.92189078111007028]")
     metrics_values = model.evaluate(tokenizedSamples, tokenizedLabels, 128)
