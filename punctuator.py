@@ -51,7 +51,7 @@ VOCAB_SIZE = 8192
 # Clean and label data
 
 def cleanData(inputFile=os.path.join(BASE_DIR, 'europarl-v7.en')):
-    sys.stderr.write("Cleaning data " + inputFile)
+    sys.stderr.write("Cleaning data " + inputFile + "\n")
     mappings = OrderedDict([
         (re.compile("['’]"), "'"),
         (re.compile("' s([" + DOT_LIKE_AND_SPACE + "])"), "'s\g<1>"),
@@ -86,14 +86,14 @@ def sampleData(
     import itertools
     from random import randint
 
-    sys.stderr.write("Sampling data " + inputFile + ' into ' + outputFile)
+    sys.stderr.write("Sampling data " + inputFile + ' into ' + outputFile + "\n")
     LOG_SAMPLE_NUM_STEP = 10000
     DOT_LIKE_REGEX = re.compile('.*[' + DOT_LIKE + ']')
 
     def incrementSampleNum(sampleNum):
         sampleNum += 1
         if sampleNum % LOG_SAMPLE_NUM_STEP == 0:
-            sys.stderr.write('sampleNum: ' + str(sampleNum))
+            sys.stderr.write('sampleNum: ' + str(sampleNum) + "\n")
         return sampleNum
 
     def readwords(mfile):
@@ -159,7 +159,7 @@ def sampleData(
 
 
 def loadSamples(samplesCount, source=os.path.join(BASE_DIR, "europarl-v7", 'europarl-v7.en.samples.txt')):
-    sys.stderr.write('Loading maximum ' + str(samplesCount) + ' samples from ' + source)
+    sys.stderr.write('Loading maximum ' + str(samplesCount) + ' samples from ' + source + "\n")
     with open(source, 'r', encoding="utf8") as input:
         samples = []
         labels = []
@@ -198,25 +198,25 @@ def loadWordIndex():
     return loadObject('wordIndex')
 
 def saveWordIndex(samples):
-    sys.stderr.write('Building word index.')
+    sys.stderr.write('Building word index.' + "\n")
     tokenizer = Tokenizer(num_words=MAX_NB_WORDS)
     tokenizer.fit_on_texts(samples)
     wordIndex = tokenizer.word_index
     saveObject(wordIndex, 'wordIndex')
-    sys.stderr.write('Found %s unique tokens.' % len(wordIndex))
+    sys.stderr.write('Found %s unique tokens.' % len(wordIndex) + "\n")
     return wordIndex
 
 
 def tokenize(labels, samples, wordIndex):
-    sys.stderr.write('Tokenizing samples.')
+    sys.stderr.write('Tokenizing samples.' + "\n")
 
     tokenizedSamples = texts_to_sequences(wordIndex, samples, MAX_NB_WORDS)
     paddedSamples = pad_sequences(tokenizedSamples, maxlen=WORDS_PER_SAMPLE_SIZE)
 
     tokenizedLabels = to_categorical(np.asarray(labels))
 
-    sys.stderr.write('Shape of paddedSamples tensor:' + str(paddedSamples.shape))
-    sys.stderr.write('Shape of tokenizedLabels tensor:' + str(tokenizedLabels.shape))
+    sys.stderr.write('Shape of paddedSamples tensor:' + str(paddedSamples.shape) + "\n")
+    sys.stderr.write('Shape of tokenizedLabels tensor:' + str(tokenizedLabels.shape) + "\n")
 
     return tokenizedLabels, paddedSamples
 
@@ -249,7 +249,7 @@ def splitTrainingAndValidation(labels, samples):
 def indexEmbeddingWordVectors():
     # first, build index mapping words in the embeddings set
     # to their embedding vector
-    sys.stderr.write('Indexing word vectors.')
+    sys.stderr.write('Indexing word vectors.' + "\n")
     embeddings_index = {}
     with open(os.path.join(GLOVE_DIR, 'glove.6B.100d.txt'), encoding="utf8") as f:
         for line in f:
@@ -257,12 +257,12 @@ def indexEmbeddingWordVectors():
             word = values[0]
             coefs = np.asarray(values[1:], dtype='float32')
             embeddings_index[word] = coefs
-    sys.stderr.write('Found %s word vectors.' % len(embeddings_index))
+    sys.stderr.write('Found %s word vectors.' % len(embeddings_index) + "\n")
     return embeddings_index
 
 
 def prepareEmbeddingMatrix(wordIndex, embeddings_index, nb_words):
-    sys.stderr.write('Preparing embedding matrix.')
+    sys.stderr.write('Preparing embedding matrix.' + "\n")
     # prepare embedding matrix
     found = 0
     embedding_matrix = np.zeros((nb_words, EMBEDDING_DIM))
@@ -274,7 +274,7 @@ def prepareEmbeddingMatrix(wordIndex, embeddings_index, nb_words):
             # words not found in embedding index will be all-zeros.
             embedding_matrix[i] = embedding_vector
             found += 1
-    sys.stderr.write("Found " + str(found) + " words in embeddings.")
+    sys.stderr.write("Found " + str(found) + " words in embeddings." + "\n")
     return embedding_matrix
 
 
@@ -297,7 +297,7 @@ def createEmbeddingLayer(wordIndex=None):
 
 
 def createModel(wordIndex=None):
-    sys.stderr.write('Creating model.')
+    sys.stderr.write('Creating model.' + "\n")
     model = Sequential()
     model.add(createEmbeddingLayer(wordIndex))
     model.add(Conv1D(512, 3, activation='relu'))
@@ -310,7 +310,7 @@ def createModel(wordIndex=None):
 
 
 def trainModel(model, xTrain, yTrain, xVal, yVal):
-    sys.stderr.write("Training")
+    sys.stderr.write("Training" + "\n")
     EPOCHS = 1
     for i in range(0, EPOCHS):
         model.fit(xTrain, yTrain, validation_data=(xVal, yVal), epochs=1, batch_size=128)
@@ -325,10 +325,10 @@ def test(file=os.path.join(BASE_DIR, "europarl-v7", 'europarl-v7.en.samples.txt.
     model = createModel()
     model.load_weights(os.path.join(BASE_DIR, "europarl-v7/europarl-v7.en.model"))
     tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
-    sys.stderr.write("Was: ['loss', 'acc']: [0.23739479177507825, 0.9305806942025947]")
+    sys.stderr.write("Was: ['loss', 'acc']: [0.23739479177507825, 0.9305806942025947]" + "\n")
     metrics_values = model.evaluate(tokenizedSamples, tokenizedLabels, 128)
-    sys.stderr.write(str(model.metrics_names) + ': ' + str(metrics_values))
-    sys.stderr.write(punctuate(samples[:500], wordIndex, model))
+    sys.stderr.write(str(model.metrics_names) + ': ' + str(metrics_values) + "\n")
+    sys.stderr.write(punctuate(samples[:500], wordIndex, model) + "\n")
 
 
 def punctuateFile(file):
@@ -380,15 +380,15 @@ def punctuate(samples, wordIndex, model):
 
 def main():
     # cleanData()
-    # labels, samples = sampleData(20000000, weighted=False)
+    labels, samples = sampleData(20000000, weighted=False)
     # labels, samples = loadSamples(10000000)
-    # wordIndex = saveWordIndex(samples)
+    wordIndex = saveWordIndex(samples)
     # wordIndex = loadWordIndex()
-    # tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
-    # xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
-    # model = createModel(wordIndex)
-    # trainModel(model, xTrain, yTrain, xVal, yVal)
-    test()
+    tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
+    xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
+    model = createModel(wordIndex)
+    trainModel(model, xTrain, yTrain, xVal, yVal)
+    # test()
     punctuateFile(os.path.join(BASE_DIR, "europarl-v7", 'ted-ai.txt'))
     punctuateFile(os.path.join(BASE_DIR, "europarl-v7", 'advice.txt'))
 
