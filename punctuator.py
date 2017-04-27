@@ -47,9 +47,6 @@ SAVE_SAMPLED = False
 # 2^13 = 8192
 VOCAB_SIZE = 8192
 
-
-# Clean and label data
-
 def cleanData(inputFile=os.path.join(BASE_DIR, 'europarl-v7.en')):
     sys.stderr.write("Cleaning data " + inputFile + "\n")
     mappings = OrderedDict([
@@ -65,7 +62,19 @@ def cleanData(inputFile=os.path.join(BASE_DIR, 'europarl-v7.en')):
         (re.compile('.*Resumption of the session.*|.*VOTE.*|^Agenda$.*report[ ]*$'), ''),
     ])
     cleanFile = inputFile + '.clean.txt'
-    with open(cleanFile, 'w', encoding="utf8") as output:
+    regexProcess(mappings, inputFile, cleanFile)
+    return cleanFile
+
+def postProcess(inputFile, outputFile):
+    sys.stderr.write("Post processing " + inputFile + "\n")
+    mappings = OrderedDict([
+        (re.compile(" n't"), "n't"),
+        (re.compile(" '"), "'"),
+    ])
+    regexProcess(mappings, inputFile, outputFile)
+
+def regexProcess(mappings, inputFile, outputFile):
+    with open(outputFile, 'w', encoding="utf8") as output:
         with open(inputFile, encoding="utf8") as input:
             for fullLine in input:
                 line = fullLine.rstrip()
@@ -74,8 +83,7 @@ def cleanData(inputFile=os.path.join(BASE_DIR, 'europarl-v7.en')):
                 if len(line) == 0:
                     continue
                 output.write(line + " ")
-    return cleanFile
-
+    return outputFile
 
 def sampleData(
         sampleCount=3000000,
@@ -328,8 +336,7 @@ def test(file=os.path.join(BASE_DIR, "europarl-v7", 'europarl-v7.en.samples.txt.
     sys.stderr.write("Was: ['loss', 'acc']: [0.23739479177507825, 0.9305806942025947]" + "\n")
     metrics_values = model.evaluate(tokenizedSamples, tokenizedLabels, 128)
     sys.stderr.write(str(model.metrics_names) + ': ' + str(metrics_values) + "\n")
-    sys.stderr.write(punctuate(samples[:500], wordIndex, model) + "\n")
-
+    punctuate(samples[:500], wordIndex, model, file)
 
 def punctuateFile(file):
     cleanFile = cleanData(file)
@@ -338,13 +345,11 @@ def punctuateFile(file):
     wordIndex = loadWordIndex()
     model = createModel()
     model.load_weights(os.path.join(BASE_DIR, "europarl-v7", "europarl-v7.en.model"))
-    text = punctuate(samples, wordIndex, model)
-    print(text)
-    with open(file + '.punctuated.txt', 'w', encoding="utf8") as output:
-        output.write(text)
+    punctuatedFile = file + '.punctuated.txt'
+    punctuate(samples, wordIndex, model, punctuatedFile)
 
 
-def punctuate(samples, wordIndex, model):
+def punctuate(samples, wordIndex, model, punctuatedFilePrefix):
     firstSample = samples[0].split(' ')
     lastSample = samples[len(samples) - 1].split(' ')
 
@@ -357,38 +362,44 @@ def punctuate(samples, wordIndex, model):
 
     DOT_LIKE_REGEX = re.compile('[' + DOT_LIKE + ']')
     capitalize = True
-    text = ''
-    for sample in samples:
-        sequences = texts_to_sequences(wordIndex, [sample], MAX_NB_WORDS)
-        tokenized = pad_sequences(sequences, maxlen=WORDS_PER_SAMPLE_SIZE)
-        preds = list(model.predict(tokenized)[0])
-        index = preds.index(max(preds))
-        punctuatedWord = sample.split(' ')[DETECTION_INDEX]
-        word = DOT_LIKE_REGEX.sub('', punctuatedWord).lower()
-        if capitalize:
-            text += word.capitalize()
-        else:
-            text += word
-        if index == 1:
-            text += '. '
-            capitalize = True
-        else:
-            text += ' '
-            capitalize = False
-    return text
+    punctuatedFile = punctuatedFilePrefix + '.punct.txt'
+    with open(punctuatedFile, 'w', encoding="utf8") as output:
+        for sample in samples:
+            sequences = texts_to_sequences(wordIndex, [sample], MAX_NB_WORDS)
+            tokenized = pad_sequences(sequences, maxlen=WORDS_PER_SAMPLE_SIZE)
+            preds = list(model.predict(tokenized)[0])
+            index = preds.index(max(preds))
+            punctuatedWord = sample.split(' ')[DETECTION_INDEX]
+            word = DOT_LIKE_REGEX.sub('', punctuatedWord).lower()
+            if capitalize:
+                output.write(word.capitalize())
+            else:
+                output.write(word)
+            if index == 1:
+                output.write('. ')
+                capitalize = True
+            else:
+                output.write(' ')
+                capitalize = False
+
+    processed = punctuatedFilePrefix + '.p.txt'
+    postProcess(punctuatedFile, processed)
+    with open(processed, encoding="utf8") as input:
+        for fullLine in input:
+            print(fullLine)
 
 
 def main():
     # cleanData()
-    labels, samples = sampleData(20000000, weighted=False)
+    # labels, samples = sampleData(20000000, weighted=False)
     # labels, samples = loadSamples(10000000)
-    wordIndex = saveWordIndex(samples)
+    # wordIndex = saveWordIndex(samples)
     # wordIndex = loadWordIndex()
-    tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
-    xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
-    model = createModel(wordIndex)
-    trainModel(model, xTrain, yTrain, xVal, yVal)
-    # test()
+    # tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
+    # xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
+    # model = createModel(wordIndex)
+    # trainModel(model, xTrain, yTrain, xVal, yVal)
+    test()
     punctuateFile(os.path.join(BASE_DIR, "europarl-v7", 'ted-ai.txt'))
     punctuateFile(os.path.join(BASE_DIR, "europarl-v7", 'advice.txt'))
 
