@@ -4,6 +4,12 @@
 GloVe embedding data can be found at:
 http://nlp.stanford.edu/data/glove.6B.zip
 (source page: http://nlp.stanford.edu/projects/glove/)
+
+Europarl v7 
+http://hltshare.fbk.eu/IWSLT2012/training-parallel-europarl.tgz
+
+Additional data
+http://hltc.cs.ust.hk/iwslt/index.php/evaluation-campaign/ted-task.html
 '''
 
 from __future__ import print_function
