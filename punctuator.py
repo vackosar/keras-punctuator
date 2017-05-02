@@ -30,9 +30,10 @@ from keras.layers import Dense, Flatten, Dropout
 from keras.layers import Conv1D, Embedding
 from keras.models import Sequential
 
-BASE_DIR = 'D:\\IdeaProjects\\data'
+BASE_DIR = '/data'
 GLOVE_DIR = os.path.join(BASE_DIR, 'glove.6B')
-TEXT_DATA_DIR = os.path.join(BASE_DIR, '20_newsgroup')
+EURO_PARL_DIR = os.path.join(BASE_DIR, 'europarl')
+PUNCTUATOR_DIR = os.path.join(BASE_DIR, 'punctuator')
 DOT_LIKE = ',;.!?'
 DOT_LIKE_AND_SPACE = ',;.!? '
 WORDS_PER_SAMPLE_SIZE = 30
@@ -53,7 +54,7 @@ SAVE_SAMPLED = False
 # 2^13 = 8192
 VOCAB_SIZE = 8192
 
-def cleanData(inputFile=os.path.join(BASE_DIR, 'europarl-v7.en')):
+def cleanData(inputFile=os.path.join(EURO_PARL_DIR, 'europarl-v7.en')):
     sys.stderr.write("Cleaning data " + inputFile + "\n")
     mappings = OrderedDict([
         (re.compile("['’]"), "'"),
@@ -93,8 +94,8 @@ def regexProcess(mappings, inputFile, outputFile):
 
 def sampleData(
         sampleCount=3000000,
-        inputFile=os.path.join(BASE_DIR, "europarl-v7", "europarl-v7.en.clean.txt"),
-        outputFile=os.path.join(BASE_DIR, "europarl-v7", "europarl-v7.en.samples.txt"),
+        inputFile=os.path.join(EURO_PARL_DIR, "europarl-v7.en.clean.txt"),
+        outputFile=os.path.join(EURO_PARL_DIR, "europarl-v7.en.samples.txt"),
         weighted=True,
         testPercentage=0.8):
     import itertools
@@ -172,7 +173,7 @@ def sampleData(
     return labels, samples
 
 
-def loadSamples(samplesCount, source=os.path.join(BASE_DIR, "europarl-v7", 'europarl-v7.en.samples.txt')):
+def loadSamples(samplesCount, source=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.samples.txt')):
     sys.stderr.write('Loading maximum ' + str(samplesCount) + ' samples from ' + source + "\n")
     with open(source, 'r', encoding="utf8") as input:
         samples = []
@@ -235,14 +236,11 @@ def tokenize(labels, samples, wordIndex):
     return tokenizedLabels, paddedSamples
 
 def saveObject(obj, name):
-    np.save(BASE_DIR + '/europarl-v7/'+ name + '.npy', obj)
+    np.save(os.path.join(PUNCTUATOR_DIR, name + '.npy'), obj)
 
 def loadObject(name):
-    """
-
-    :rtype: dict
-    """
-    return np.load(BASE_DIR + '/europarl-v7/'+ name + '.npy').item()
+    """ :rtype: dict """
+    return np.load(os.path.join(PUNCTUATOR_DIR, name + '.npy')).item()
 
 
 # split the data into a training set and a validation set
@@ -328,16 +326,16 @@ def trainModel(model, xTrain, yTrain, xVal, yVal):
     EPOCHS = 1
     for i in range(0, EPOCHS):
         model.fit(xTrain, yTrain, validation_data=(xVal, yVal), epochs=1, batch_size=128)
-        model.save_weights(os.path.join(BASE_DIR, "europarl-v7", "europarl-v7.en.model"))
+        model.save_weights(os.path.join(PUNCTUATOR_DIR, "model"))
         test()
     return model
 
 
-def test(file=os.path.join(BASE_DIR, "europarl-v7", 'europarl-v7.en.samples.txt.test')):
+def test(file=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.samples.txt.test')):
     labels, samples = loadSamples(100000, file)
     wordIndex = loadWordIndex()
     model = createModel()
-    model.load_weights(os.path.join(BASE_DIR, "europarl-v7/europarl-v7.en.model"))
+    model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
     tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
     sys.stderr.write("Was: ['loss', 'acc']: [0.23739479177507825, 0.9305806942025947]" + "\n")
     metrics_values = model.evaluate(tokenizedSamples, tokenizedLabels, 128)
@@ -350,7 +348,7 @@ def punctuateFile(file):
     labels, samples = sampleData(10000000, cleanFile, sampledFile, False, 1)
     wordIndex = loadWordIndex()
     model = createModel()
-    model.load_weights(os.path.join(BASE_DIR, "europarl-v7", "europarl-v7.en.model"))
+    model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
     punctuatedFile = file + '.punctuated.txt'
     punctuate(samples, wordIndex, model, punctuatedFile)
 
@@ -397,17 +395,17 @@ def punctuate(samples, wordIndex, model, punctuatedFilePrefix):
 
 def main():
     # cleanData()
-    # labels, samples = sampleData(20000000, weighted=False)
-    # labels, samples = loadSamples(10000000)
+    # labels, samples = sampleData(10000000, weighted=False)
+    # labels, samples = loadSamples(500000)
     # wordIndex = saveWordIndex(samples)
     # wordIndex = loadWordIndex()
     # tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
     # xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
     # model = createModel(wordIndex)
     # trainModel(model, xTrain, yTrain, xVal, yVal)
-    test()
-    punctuateFile(os.path.join(BASE_DIR, "europarl-v7", 'ted-ai.txt'))
-    punctuateFile(os.path.join(BASE_DIR, "europarl-v7", 'advice.txt'))
+    # test()
+    punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
+    punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
 
 if len(sys.argv) == 2:
     file = sys.argv[1]
