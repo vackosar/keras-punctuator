@@ -393,10 +393,33 @@ def punctuate(samples, wordIndex, model, punctuatedFilePrefix):
             print(fullLine)
 
 
+def tensorflow():
+    # K.set_learning_phase(0)  # all new operations will be in test mode from now on
+
+    # wordIndex = loadWordIndex()
+    model = createModel()
+    model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
+
+
+    export_path = os.path.join(PUNCTUATOR_DIR, 'graph.gp') # where to save the exported graph
+    export_version = 1 # version number (integer)
+
+    import tensorflow as tf
+    sess = tf.Session()
+
+    saver = tf.train.Saver(sharded=True)
+    from tensorflow.contrib.session_bundle import exporter
+    model_exporter = exporter.Exporter(saver)
+    signature = exporter.classification_signature(input_tensor=model.input,scores_tensor=model.output)
+    model_exporter.init(sess.graph.as_graph_def(),default_graph_signature=signature)
+    tf.initialize_all_variables().run(session=sess)
+    model_exporter.export(export_path, tf.constant(export_version), sess)
+
+
 def main():
     # cleanData()
     # labels, samples = sampleData(10000000, weighted=False)
-    # labels, samples = loadSamples(500000)
+    # labels, samples = loadSamples(5000000)
     # wordIndex = saveWordIndex(samples)
     # wordIndex = loadWordIndex()
     # tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
@@ -404,8 +427,9 @@ def main():
     # model = createModel(wordIndex)
     # trainModel(model, xTrain, yTrain, xVal, yVal)
     # test()
-    punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
-    punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
+    # punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
+    # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
+    tensorflow()
 
 if len(sys.argv) == 2:
     file = sys.argv[1]
