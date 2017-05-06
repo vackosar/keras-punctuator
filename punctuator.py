@@ -416,7 +416,7 @@ def tensorflow():
     model_exporter = exporter.Exporter(saver)
     signature = exporter.classification_signature(input_tensor=model.input,scores_tensor=model.output)
     # model_exporter.init(sess.graph.as_graph_def(),default_graph_signature=signature)
-    # tf.initialize_all_variables().run(session=sess)
+    tf.initialize_all_variables().run(session=sess)
     # model_exporter.export(export_path, tf.constant(export_version), sess)
     from tensorflow.python.saved_model import builder as saved_model_builder
     builder = saved_model_builder.SavedModelBuilder(export_path)
@@ -424,7 +424,9 @@ def tensorflow():
     from tensorflow.python.saved_model import tag_constants
     legacy_init_op = tf.group(tf.tables_initializer(), name='legacy_init_op')
     from tensorflow.python.saved_model.signature_def_utils_impl import predict_signature_def
-    signature_def = predict_signature_def(model.input, model.output)
+    signature_def = predict_signature_def(
+        {signature_constants.PREDICT_INPUTS: model.input},
+        {signature_constants.PREDICT_OUTPUTS: model.output})
     builder.add_meta_graph_and_variables(
         sess, [tag_constants.SERVING],
         signature_def_map={
