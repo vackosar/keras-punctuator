@@ -395,7 +395,7 @@ def punctuate(samples, wordIndex, model, punctuatedFilePrefix):
             print(fullLine)
 
 
-def tensorflow():
+def saveWithSavedModel():
     # K.set_learning_phase(0)  # all new operations will be in test mode from now on
 
     # wordIndex = loadWordIndex()
@@ -437,6 +437,57 @@ def tensorflow():
     builder.save()
 
 
+def freeze():
+
+    FREEZE_DIR = os.path.join(PUNCTUATOR_DIR, 'freezed')
+
+    checkpoint_prefix = os.path.join(FREEZE_DIR, "saved_checkpoint")
+    checkpoint_state_name = "checkpoint_state"
+    input_graph_name = "input_graph.pb"
+    output_graph_name = "output_graph.pb"
+    saver_write_version = 1
+
+    # We'll create an input graph that has a single variable containing 1.0,
+    # and that then multiplies it by 2.
+    from tensorflow.python.framework import ops
+    with ops.Graph().as_default():
+        from tensorflow.python.ops import variables
+        model = createModel()
+        model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
+        from tensorflow.python.client import session
+        sess = session.Session()
+        init = variables.global_variables_initializer()
+        sess.run(init)
+        # output = sess.run(output_node)
+        # self.assertNear(2.0, output, 0.00001)
+        from tensorflow.python.training import saver as saver_lib
+        saver = saver_lib.Saver(write_version=saver_write_version)
+        checkpoint_path = saver.save(
+            sess,
+            checkpoint_prefix,
+            global_step=0,
+            latest_filename=checkpoint_state_name)
+        from tensorflow.python.framework import graph_io
+        graph_io.write_graph(sess.graph, FREEZE_DIR, input_graph_name)
+
+    # We save out the graph to disk, and then call the const conversion
+    # routine.
+    input_graph_path = os.path.join(FREEZE_DIR, input_graph_name)
+    input_saver_def_path = ""
+    input_binary = False
+    output_node_names = model.output.name.split(':')[0]
+    restore_op_name = "save/restore_all"
+    filename_tensor_name = "save/Const:0"
+    output_graph_path = os.path.join(FREEZE_DIR, output_graph_name)
+    clear_devices = False
+
+    from tensorflow.python.tools import freeze_graph
+    freeze_graph.freeze_graph(input_graph_path, input_saver_def_path,
+                              input_binary, checkpoint_path, output_node_names,
+                              restore_op_name, filename_tensor_name,
+                              output_graph_path, clear_devices, "")
+
+
 
 
 def main():
@@ -452,7 +503,8 @@ def main():
     # test()
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
-    tensorflow()
+    # saveWithSavedModel()
+    freeze()
 
 if len(sys.argv) == 2:
     file = sys.argv[1]
