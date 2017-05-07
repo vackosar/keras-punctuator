@@ -315,7 +315,8 @@ def createModel(wordIndex=None):
     model = Sequential()
     model.add(createEmbeddingLayer(wordIndex))
     model.add(Conv1D(512, 3, activation='relu'))
-    model.add(Dropout(0.25))
+    if wordIndex is not None:
+        model.add(Dropout(0.25))
     model.add(Flatten())
     model.add(Dense(LABELS_COUNT, activation='softmax'))
     # alternative optimizer: rmsprop, adam
