@@ -488,7 +488,19 @@ def freeze():
                               restore_op_name, filename_tensor_name,
                               output_graph_path, clear_devices, "")
 
+    exportWordIndex(loadWordIndex())
 
+
+def exportWordIndex(wordIndex):
+    '''
+    :param wordIndex: dict 
+    :return: None
+    '''
+
+    outputFile = os.path.join(PUNCTUATOR_DIR, 'freezed', 'output_word_index')
+    with open(outputFile, 'w', encoding="utf8") as output:
+        for item in wordIndex.items():
+            output.write(item[0] + " " + str(item[1]) + '\n')
 
 
 def main():
@@ -506,6 +518,7 @@ def main():
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
     # saveWithSavedModel()
     freeze()
+    sys.stderr.write("Done")
 
 if len(sys.argv) == 2:
     file = sys.argv[1]
