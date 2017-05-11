@@ -218,7 +218,12 @@ def saveWordIndex(samples):
     sys.stderr.write('Building word index.' + "\n")
     tokenizer = Tokenizer(num_words=MAX_NB_WORDS)
     tokenizer.fit_on_texts(samples)
-    wordIndex = tokenizer.word_index
+    wordIndex = {}
+    for num, item in enumerate(tokenizer.word_index.items()):
+        if num >= MAX_NB_WORDS - 1:
+            break
+        else:
+            wordIndex[item[0]] = item[1]
     saveObject(wordIndex, 'wordIndex')
     sys.stderr.write('Found %s unique tokens.' % len(wordIndex) + "\n")
     return wordIndex
@@ -505,16 +510,16 @@ def exportWordIndex(wordIndex):
 
 def main():
     # cleanData()
-    # labels, samples = sampleData(10000000, weighted=False)
+    labels, samples = sampleData(5000000, weighted=False)
     # labels, samples = loadSamples(5000000)
-    # wordIndex = saveWordIndex(samples)
+    wordIndex = saveWordIndex(samples)
     # wordIndex = loadWordIndex()
     # tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
     # xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
     # model = createModel(wordIndex)
     # trainModel(model, xTrain, yTrain, xVal, yVal)
     # test()
-    # punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
+    punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
     # saveWithSavedModel()
     freeze()
