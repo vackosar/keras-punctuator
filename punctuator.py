@@ -497,10 +497,9 @@ def freeze():
 
     exportWordIndex(loadWordIndex())
 
-def getExpectedValues():
+def getExpectedValues(feed):
     model = createModel()
     model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
-    feed = np.array([1981, 12531, 12, 209, 42, 360, 7212, 96, 19999, 796, 3, 10, 8841, 7481, 7228, 464, 42, 177, 19999, 362, 425, 3, 2191, 206, 3, 19, 42, 132, 17094, 60], ndmin=2)
     return model.predict(feed)
 
 def testFreezed():
@@ -520,7 +519,7 @@ def testFreezed():
         # print(output)
         feed = np.array([1981, 12531, 12, 209, 42, 360, 7212, 96, 19999, 796, 3, 10, 8841, 7481, 7228, 464, 42, 177, 19999, 362, 425, 3, 2191, 206, 3, 19, 42, 132, 17094, 60], ndmin=2)
         actual = sess.run("import/dense_1/Softmax:0", {x: feed})
-        expected = getExpectedValues()
+        expected = getExpectedValues(feed)
         print("Expected: " + str(expected) + " Actual:" + str(actual))
         if expected[0][0] == actual[0][0] and expected[0][1] == actual[0][1]:
             print("OK")
@@ -556,7 +555,6 @@ def main():
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
     # saveWithSavedModel()
     # freeze()
-    getExpectedValues()
     testFreezed()
     sys.stderr.write("Done")
 
