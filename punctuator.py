@@ -364,12 +364,15 @@ def punctuateFile(file):
 def punctuate(samples, wordIndex, model, punctuatedFilePrefix):
     firstSample = samples[0].split(' ')
     lastSample = samples[len(samples) - 1].split(' ')
+    filler = []
+    for i in range(1, WORDS_PER_SAMPLE_SIZE):
+        filler.append("however")
 
     for i in range(1, DETECTION_INDEX + 1):
-        preSample = lastSample[WORDS_PER_SAMPLE_SIZE - i:] + firstSample[:WORDS_PER_SAMPLE_SIZE - i]
+        preSample = filler[WORDS_PER_SAMPLE_SIZE - i:] + firstSample[:WORDS_PER_SAMPLE_SIZE - i + 1]
         samples.insert(0, ' '.join(preSample))
         if i != DETECTION_INDEX:
-            postSample = lastSample[i:] + firstSample[:i]
+            postSample = lastSample[i:] + filler[:i]
             samples.append(' '.join(postSample))
 
     DOT_LIKE_REGEX = re.compile('[' + DOT_LIKE + ']')
@@ -510,19 +513,19 @@ def exportWordIndex(wordIndex):
 
 def main():
     # cleanData()
-    labels, samples = sampleData(5000000, weighted=False)
+    # labels, samples = sampleData(5000000, weighted=False)
     # labels, samples = loadSamples(5000000)
-    wordIndex = saveWordIndex(samples)
+    # wordIndex = saveWordIndex(samples)
     # wordIndex = loadWordIndex()
     # tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
     # xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
     # model = createModel(wordIndex)
     # trainModel(model, xTrain, yTrain, xVal, yVal)
     # test()
-    punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
-    # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
+    # punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
+    punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
     # saveWithSavedModel()
-    freeze()
+    # freeze()
     sys.stderr.write("Done")
 
 if len(sys.argv) == 2:
