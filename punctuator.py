@@ -36,6 +36,7 @@ BASE_DIR = '/data'
 GLOVE_DIR = os.path.join(BASE_DIR, 'glove.6B')
 EURO_PARL_DIR = os.path.join(BASE_DIR, 'europarl')
 PUNCTUATOR_DIR = os.path.join(BASE_DIR, 'punctuator')
+FREEZE_DIR = os.path.join(PUNCTUATOR_DIR, 'freezed')
 DOT_LIKE = ',;.!?'
 DOT_LIKE_AND_SPACE = ',;.!? '
 WORDS_PER_SAMPLE_SIZE = 30
@@ -447,9 +448,6 @@ def saveWithSavedModel():
 
 
 def freeze():
-
-    FREEZE_DIR = os.path.join(PUNCTUATOR_DIR, 'freezed')
-
     checkpoint_prefix = os.path.join(FREEZE_DIR, "saved_checkpoint")
     checkpoint_state_name = "checkpoint_state"
     input_graph_name = "input_graph.pb"
@@ -478,6 +476,7 @@ def freeze():
             latest_filename=checkpoint_state_name)
         from tensorflow.python.framework import graph_io
         graph_io.write_graph(sess.graph, FREEZE_DIR, input_graph_name)
+        sess.close()
 
     # We save out the graph to disk, and then call the const conversion
     # routine.
@@ -497,6 +496,24 @@ def freeze():
                               output_graph_path, clear_devices, "")
 
     exportWordIndex(loadWordIndex())
+
+def testFreezed():
+    import tensorflow as tf
+    from tensorflow import import_graph_def
+    from tensorflow.python.platform import gfile
+    with tf.Session() as sess:
+        with gfile.FastGFile(os.path.join(FREEZE_DIR, "output_graph.pb"),'rb') as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+            sess.graph.as_default()
+            x = tf.placeholder(tf.int32, shape=[1, 30], name="input")
+            import_graph_def(graph_def, input_map={"embedding_1_input": x})
+        # input_x = sess.graph.get_tensor_by_name("import/embedding_1_input:0")
+        # print(input_x)
+        # output = sess.graph.get_tensor_by_name("import/dense_1/Softmax:0")
+        # print(output)
+        feed = np.array([1981, 12531, 12, 209, 42, 360, 7212, 96, 19999, 796, 3, 10, 8841, 7481, 7228, 464, 42, 177, 19999, 362, 425, 3, 2191, 206, 3, 19, 42, 132, 17094, 60], ndmin=2)
+        print(sess.run("import/dense_1/Softmax:0", {x: feed}))
 
 
 def exportWordIndex(wordIndex):
@@ -523,9 +540,10 @@ def main():
     # trainModel(model, xTrain, yTrain, xVal, yVal)
     # test()
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
-    punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
+    # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
     # saveWithSavedModel()
     # freeze()
+    testFreezed()
     sys.stderr.write("Done")
 
 if len(sys.argv) == 2:
