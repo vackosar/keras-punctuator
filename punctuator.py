@@ -510,13 +510,9 @@ def testFreezed():
         with gfile.FastGFile(os.path.join(FREEZE_DIR, "output_graph.pb"),'rb') as f:
             graph_def = tf.GraphDef()
             graph_def.ParseFromString(f.read())
-            sess.graph.as_default()
-            x = tf.placeholder(tf.int32, shape=[1, 30], name="input")
-            import_graph_def(graph_def, input_map={"embedding_1_input": x})
-        # input_x = sess.graph.get_tensor_by_name("import/embedding_1_input:0")
-        # print(input_x)
-        # output = sess.graph.get_tensor_by_name("import/dense_1/Softmax:0")
-        # print(output)
+        sess.graph.as_default()
+        x = tf.placeholder(tf.int32, shape=[1, 30], name="input")
+        import_graph_def(graph_def, input_map={"embedding_1_input": x})
         feed = np.array([1981, 12531, 12, 209, 42, 360, 7212, 96, 19999, 796, 3, 10, 8841, 7481, 7228, 464, 42, 177, 19999, 362, 425, 3, 2191, 206, 3, 19, 42, 132, 17094, 60], ndmin=2)
         actual = sess.run("import/dense_1/Softmax:0", {x: feed})
         expected = getExpectedValues(feed)
@@ -525,7 +521,6 @@ def testFreezed():
             print("OK")
         else:
             print("FAIL")
-
 
 
 def exportWordIndex(wordIndex):
