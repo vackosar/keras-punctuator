@@ -458,19 +458,16 @@ def freeze():
     # and that then multiplies it by 2.
     from tensorflow.python.framework import ops
     with ops.Graph().as_default():
-        from tensorflow.python.ops import variables
+        from keras import backend as K
+        K.set_learning_phase(0)
         model = createModel()
         model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
-        from tensorflow.python.client import session
 
-        sess = session.Session()
-        init = variables.global_variables_initializer()
-        sess.run(init)
+        sess = K.get_session()
+        from tensorflow.python.framework.graph_util_impl import convert_variables_to_constants
+        # convert_variables_to_constants(sess, sess.graph.as_graph_def(), [model.output.name.split(':')[0]])
         testGraph(sess, '')
 
-        sess = session.Session()
-        init = variables.global_variables_initializer()
-        sess.run(init)
         from tensorflow.python.training import saver as saver_lib
         saver = saver_lib.Saver(write_version=saver_write_version)
         checkpoint_path = saver.save(
@@ -481,6 +478,7 @@ def freeze():
         from tensorflow.python.framework import graph_io
         graph_io.write_graph(sess.graph, FREEZE_DIR, input_graph_name)
         sess.close()
+
 
     # We save out the graph to disk, and then call the const conversion
     # routine.
