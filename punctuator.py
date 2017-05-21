@@ -35,6 +35,7 @@ from keras.models import Sequential
 BASE_DIR = '/data'
 GLOVE_DIR = os.path.join(BASE_DIR, 'glove.6B')
 EURO_PARL_DIR = os.path.join(BASE_DIR, 'europarl')
+NEWS_DIR = os.path.join(BASE_DIR, 'training-monolingual-newsshuffled')
 PUNCTUATOR_DIR = os.path.join(BASE_DIR, 'punctuator')
 FREEZE_DIR = os.path.join(PUNCTUATOR_DIR, 'freezed')
 DOT_LIKE = ',;.!?'
@@ -47,9 +48,9 @@ EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
 SAVE_SAMPLED = False
 
-# cat europarl-v7.en.clean.txt |grep -o '[,\.!?]'|wc -l
+# cat europarl-v7.en.clean |grep -o '[,\.!?]'|wc -l
 # 5102642
-# cat europarl-v7.en.clean.txt |wc -w
+# cat europarl-v7.en.clean |wc -w
 # 53603063
 # 53603063 / 5102642 = 10.5
 
@@ -71,7 +72,7 @@ def cleanData(inputFile=os.path.join(EURO_PARL_DIR, 'europarl-v7.en')):
         (re.compile('^$|^\.$'), ''),
         (re.compile('.*Resumption of the session.*|.*VOTE.*|^Agenda$.*report[ ]*$'), ''),
     ])
-    cleanFile = inputFile + '.clean.txt'
+    cleanFile = inputFile + '.clean'
     regexProcess(mappings, inputFile, cleanFile)
     return cleanFile
 
@@ -97,13 +98,13 @@ def regexProcess(mappings, inputFile, outputFile):
 
 def sampleData(
         sampleCount=3000000,
-        inputFile=os.path.join(EURO_PARL_DIR, "europarl-v7.en.clean.txt"),
-        outputFile=os.path.join(EURO_PARL_DIR, "europarl-v7.en.samples.txt"),
+        inputFile=os.path.join(EURO_PARL_DIR, "europarl-v7.en.clean"),
         weighted=True,
         testPercentage=0.8):
     import itertools
     from random import randint
 
+    outputFile = inputFile + ".samples"
     sys.stderr.write("Sampling data " + inputFile + ' into ' + outputFile + "\n")
     LOG_SAMPLE_NUM_STEP = 10000
     DOT_LIKE_REGEX = re.compile('.*[' + DOT_LIKE + ']')
@@ -176,7 +177,7 @@ def sampleData(
     return labels, samples
 
 
-def loadSamples(samplesCount, source=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.samples.txt')):
+def loadSamples(samplesCount, source=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.clean.samples')):
     sys.stderr.write('Loading maximum ' + str(samplesCount) + ' samples from ' + source + "\n")
     with open(source, 'r', encoding="utf8") as input:
         samples = []
@@ -330,17 +331,17 @@ def createModel(wordIndex=None):
     return model
 
 
-def trainModel(model, xTrain, yTrain, xVal, yVal):
+def trainModel(model, xTrain, yTrain, xVal, yVal, filePrefix):
     sys.stderr.write("Training" + "\n")
     EPOCHS = 1
     for i in range(0, EPOCHS):
         model.fit(xTrain, yTrain, validation_data=(xVal, yVal), epochs=1, batch_size=128)
         model.save_weights(os.path.join(PUNCTUATOR_DIR, "model"))
-        test()
+        test(filePrefix + ".test")
     return model
 
 
-def test(file=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.samples.txt.test')):
+def test(file=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.samples.test')):
     labels, samples = loadSamples(100000, file)
     wordIndex = loadWordIndex()
     model = createModel()
@@ -354,11 +355,11 @@ def test(file=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.samples.txt.test')):
 def punctuateFile(file):
     cleanFile = cleanData(file)
     sampledFile = cleanFile + ".sampled"
-    labels, samples = sampleData(10000000, cleanFile, sampledFile, False, 1)
+    labels, samples = sampleData(10000000, cleanFile, False, 1)
     wordIndex = loadWordIndex()
     model = createModel()
     model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
-    punctuatedFile = file + '.punctuated.txt'
+    punctuatedFile = file + '.punct'
     punctuate(samples, wordIndex, model, punctuatedFile)
 
 
@@ -378,7 +379,7 @@ def punctuate(samples, wordIndex, model, punctuatedFilePrefix):
 
     DOT_LIKE_REGEX = re.compile('[' + DOT_LIKE + ']')
     capitalize = True
-    punctuatedFile = punctuatedFilePrefix + '.punct.txt'
+    punctuatedFile = punctuatedFilePrefix + '.punct'
     with open(punctuatedFile, 'w', encoding="utf8") as output:
         for sample in samples:
             sequences = texts_to_sequences(wordIndex, [sample], MAX_NB_WORDS)
@@ -398,7 +399,7 @@ def punctuate(samples, wordIndex, model, punctuatedFilePrefix):
                 output.write(' ')
                 capitalize = False
 
-    processed = punctuatedFilePrefix + '.p.txt'
+    processed = punctuatedFile + '.proc.txt'
     postProcess(punctuatedFile, processed)
     with open(processed, encoding="utf8") as input:
         for fullLine in input:
@@ -542,15 +543,16 @@ def exportWordIndex(wordIndex):
 
 
 def main():
-    # cleanData()
-    # labels, samples = sampleData(5000000, weighted=False)
-    # labels, samples = loadSamples(5000000)
+    dataFile = os.path.join(NEWS_DIR, 'news.2011.en.shuffled')
+    # cleanData(dataFile)
+    # labels, samples = sampleData(5000000, dataFile + ".clean", weighted=False)
+    # labels, samples = loadSamples(5000000, dataFile + ".clean.samples")
     # wordIndex = saveWordIndex(samples)
     # wordIndex = loadWordIndex()
     # tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
     # xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
     # model = createModel(wordIndex)
-    # trainModel(model, xTrain, yTrain, xVal, yVal)
+    # trainModel(model, xTrain, yTrain, xVal, yVal, dataFile + ".clean.samples")
     # test()
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
