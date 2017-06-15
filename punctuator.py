@@ -37,7 +37,9 @@ GLOVE_DIR = os.path.join(BASE_DIR, 'glove.6B')
 EURO_PARL_DIR = os.path.join(BASE_DIR, 'europarl')
 NEWS_DIR = os.path.join(BASE_DIR, 'training-monolingual-newsshuffled')
 PUNCTUATOR_DIR = os.path.join(BASE_DIR, 'punctuator')
-FREEZE_DIR = os.path.join(PUNCTUATOR_DIR, 'freezed')
+MODEL_DATA_DIR = "model-data"
+TMP_DIR = "tmp"
+KERAS_WEIGHTS_FILE = os.path.join(MODEL_DATA_DIR, "model")
 DOT_LIKE = ',;.!?'
 DOT_LIKE_AND_SPACE = ',;.!? '
 WORDS_PER_SAMPLE_SIZE = 30
@@ -245,11 +247,11 @@ def tokenize(labels, samples, wordIndex):
     return tokenizedLabels, paddedSamples
 
 def saveObject(obj, name):
-    np.save(os.path.join(PUNCTUATOR_DIR, name + '.npy'), obj)
+    np.save(os.path.join(MODEL_DATA_DIR, name + '.npy'), obj)
 
 def loadObject(name):
     """ :rtype: dict """
-    return np.load(os.path.join(PUNCTUATOR_DIR, name + '.npy')).item()
+    return np.load(os.path.join(MODEL_DATA_DIR, name + '.npy')).item()
 
 
 # split the data into a training set and a validation set
@@ -336,7 +338,7 @@ def trainModel(model, xTrain, yTrain, xVal, yVal, filePrefix):
     EPOCHS = 1
     for i in range(0, EPOCHS):
         model.fit(xTrain, yTrain, validation_data=(xVal, yVal), epochs=1, batch_size=128)
-        model.save_weights(os.path.join(PUNCTUATOR_DIR, "model"))
+        model.save_weights(KERAS_WEIGHTS_FILE)
         test(filePrefix + ".test")
     return model
 
@@ -345,7 +347,7 @@ def test(file=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.samples.test')):
     labels, samples = loadSamples(100000, file)
     wordIndex = loadWordIndex()
     model = createModel()
-    model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
+    model.load_weights(KERAS_WEIGHTS_FILE)
     tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
     sys.stderr.write("Was: ['loss', 'acc']: [0.23739479177507825, 0.9305806942025947]" + "\n")
     metrics_values = model.evaluate(tokenizedSamples, tokenizedLabels, 128)
@@ -358,7 +360,7 @@ def punctuateFile(file):
     labels, samples = sampleData(10000000, cleanFile, False, 1)
     wordIndex = loadWordIndex()
     model = createModel()
-    model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
+    model.load_weights(KERAS_WEIGHTS_FILE)
     punctuatedFile = file + '.punct'
     punctuate(samples, wordIndex, model, punctuatedFile)
 
@@ -411,7 +413,7 @@ def saveWithSavedModel():
 
     # wordIndex = loadWordIndex()
     model = createModel()
-    model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
+    model.load_weights(KERAS_WEIGHTS_FILE)
 
 
     export_path = os.path.join(PUNCTUATOR_DIR, 'graph') # where to save the exported graph
@@ -449,10 +451,10 @@ def saveWithSavedModel():
 
 
 def freeze():
-    checkpoint_prefix = os.path.join(FREEZE_DIR, "saved_checkpoint")
+    checkpoint_prefix = os.path.join(TMP_DIR, "saved_checkpoint")
     checkpoint_state_name = "checkpoint_state"
     input_graph_name = "input_graph.pb"
-    output_graph_name = "output_graph.pb"
+    output_graph_name = "freezed.pb"
     saver_write_version = 1
 
     # We'll create an input graph that has a single variable containing 1.0,
@@ -462,7 +464,7 @@ def freeze():
         from keras import backend as K
         K.set_learning_phase(0)
         model = createModel()
-        model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
+        model.load_weights(KERAS_WEIGHTS_FILE)
 
         sess = K.get_session()
         from tensorflow.python.framework.graph_util_impl import convert_variables_to_constants
@@ -477,19 +479,19 @@ def freeze():
             global_step=0,
             latest_filename=checkpoint_state_name)
         from tensorflow.python.framework import graph_io
-        graph_io.write_graph(sess.graph, FREEZE_DIR, input_graph_name)
+        graph_io.write_graph(sess.graph, TMP_DIR, input_graph_name)
         sess.close()
 
 
     # We save out the graph to disk, and then call the const conversion
     # routine.
-    input_graph_path = os.path.join(FREEZE_DIR, input_graph_name)
+    input_graph_path = os.path.join(TMP_DIR, input_graph_name)
     input_saver_def_path = ""
     input_binary = False
     output_node_names = model.output.name.split(':')[0]
     restore_op_name = "save/restore_all"
     filename_tensor_name = "save/Const:0"
-    output_graph_path = os.path.join(FREEZE_DIR, output_graph_name)
+    output_graph_path = os.path.join(MODEL_DATA_DIR, output_graph_name)
     clear_devices = False
 
     from tensorflow.python.tools import freeze_graph
@@ -502,7 +504,7 @@ def freeze():
 
 def getExpectedValues(feed):
     model = createModel()
-    model.load_weights(os.path.join(PUNCTUATOR_DIR, "model"))
+    model.load_weights(KERAS_WEIGHTS_FILE)
     return model.predict(feed)
 
 def testFreezed():
@@ -510,7 +512,7 @@ def testFreezed():
     from tensorflow import import_graph_def
     from tensorflow.python.platform import gfile
     with tf.Session() as sess:
-        with gfile.FastGFile(os.path.join(FREEZE_DIR, "output_graph.pb"),'rb') as f:
+        with gfile.FastGFile(os.path.join(MODEL_DATA_DIR, "output_graph.pb"),'rb') as f:
             graph_def = tf.GraphDef()
             graph_def.ParseFromString(f.read())
         sess.graph.as_default()
@@ -546,8 +548,8 @@ def main():
     dataFile = os.path.join(NEWS_DIR, 'news.2011.en.shuffled')
     # cleanData(dataFile)
     # labels, samples = sampleData(5000000, dataFile + ".clean", weighted=False)
-    # labels, samples = loadSamples(5000000, dataFile + ".clean.samples")
-    # wordIndex = saveWordIndex(samples)
+    labels, samples = loadSamples(5000000, dataFile + ".clean.samples")
+    wordIndex = saveWordIndex(samples)
     # wordIndex = loadWordIndex()
     # tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
     # xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
