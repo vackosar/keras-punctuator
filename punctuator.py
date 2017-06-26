@@ -636,11 +636,11 @@ def main():
     # trainModel(model, xTrain, yTrain, xVal, yVal, dataFile + ".clean.samples")
     # test(dataFile + ".clean.samples.test")
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
-    # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
+    punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
     # saveWithSavedModel()
     # freeze()
     # testFreezed()
-    writeTensorflowDashboardLog()
+    # writeTensorflowDashboardLog()
     sys.stderr.write("Done")
 
 if len(sys.argv) == 2:
