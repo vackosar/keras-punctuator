@@ -52,3 +52,13 @@ Prediction output consisting of two float values is computed as softmax of activ
 <img src="partial-graph.png" width="800">
 
 ## Performance
+
+- Precision: 92%
+- Recall: 92%
+- F Score: 92%
+
+I am  not confident in Recall and F Score measures, but Precision one is accurate.
+
+### Examples
+
+
