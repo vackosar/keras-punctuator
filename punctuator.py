@@ -350,7 +350,7 @@ def test(file=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.samples.test')):
     model = createModel()
     model.load_weights(KERAS_WEIGHTS_FILE)
     tokenizedLabels, tokenizedSamples = tokenize(labels, samples, wordIndex)
-    sys.stderr.write("Was: ['loss', 'acc']: [0.23739479177507825, 0.9305806942025947]" + "\n")
+    sys.stderr.write("['loss', 'acc', 'precision', 'recall', 'fbeta_score']: [0.24152110019584505, 0.92070079298134133, 0.92070079300101071, 0.92070079300101071, 0.92070073339636593]" + "\n")
     metrics_values = model.evaluate(tokenizedSamples, tokenizedLabels, 128)
     sys.stderr.write(str(model.metrics_names) + ': ' + str(metrics_values) + "\n")
     punctuate(samples[:500], wordIndex, model, file)
