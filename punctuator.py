@@ -604,6 +604,22 @@ def exportWordIndex(wordIndex):
             output.write(item[0] + " " + str(item[1]) + '\n')
 
 
+def writeTensorflowDashboardLog():
+    from tensorflow.python.framework import ops
+    with ops.Graph().as_default():
+        from keras import backend as K
+        K.set_learning_phase(0)
+        model = createModel()
+        model.load_weights(KERAS_WEIGHTS_FILE)
+        sess = K.get_session()
+
+        testGraph(sess, '')
+        import tensorflow as tf
+        writer = tf.summary.FileWriter("tmp", graph=sess.graph)
+        writer.flush()
+        writer.close()
+
+
 def main():
     dataFile = os.path.join(NEWS_DIR, 'news.2011.en.shuffled')
     # cleanData(dataFile)
@@ -615,12 +631,13 @@ def main():
     # xTrain, yTrain, xVal, yVal = splitTrainingAndValidation(tokenizedLabels, tokenizedSamples)
     # model = createModel(wordIndex)
     # trainModel(model, xTrain, yTrain, xVal, yVal, dataFile + ".clean.samples")
-    test(dataFile + ".clean.samples.test")
+    # test(dataFile + ".clean.samples.test")
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
     # saveWithSavedModel()
     # freeze()
     # testFreezed()
+    writeTensorflowDashboardLog()
     sys.stderr.write("Done")
 
 if len(sys.argv) == 2:
