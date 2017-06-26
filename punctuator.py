@@ -8,6 +8,9 @@ http://nlp.stanford.edu/data/glove.6B.zip
 Europarl v7 
 http://hltshare.fbk.eu/IWSLT2012/training-parallel-europarl.tgz
 
+News Crawl from WMT 2012 (en, fr), 7GB
+http://hltshare.fbk.eu/IWSLT2012/training-monolingual-newsshuffled.tgz
+
 Additional data
 http://hltc.cs.ust.hk/iwslt/index.php/evaluation-campaign/ted-task.html
 '''
