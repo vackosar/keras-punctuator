@@ -18,6 +18,8 @@ First used EU Parliament transcription data, but that was expectantly suboptimal
 
 After cleaning the data, word index is built from 20k most occurring words. Word index maps words to either their frequency number or to a default token in case they are not in 20k most common ones.
 
+Number of samples used was within order of magnitude of millions.
+
 
 ## Model Overview
 
