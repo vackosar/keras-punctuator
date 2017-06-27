@@ -6,7 +6,7 @@ This project is being used in practice in my Android app Youtube Reader: [https:
 
 ## Inspirational Project
 
-Punctuator 2 from Ottokar Tilk at: https://github.com/ottokart/punctuator2
+Punctuator 2 by Ottokar Tilk at: https://github.com/ottokart/punctuator2
 
 > A bidirectional recurrent neural network model with attention mechanism for restoring missing inter-word punctuation in unsegmented text.
   
