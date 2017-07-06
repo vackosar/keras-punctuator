@@ -356,20 +356,29 @@ def test(file=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.samples.test')):
     sys.stderr.write("['loss', 'acc', 'precision', 'recall', 'fbeta_score']: [0.24152110019584505, 0.92070079298134133, 0.92070079300101071, 0.92070079300101071, 0.92070073339636593]" + "\n")
     metrics_values = model.evaluate(tokenizedSamples, tokenizedLabels, 128)
     sys.stderr.write(str(model.metrics_names) + ': ' + str(metrics_values) + "\n")
-    punctuate(samples[:500], wordIndex, model, file)
+    predict = lambda tokenized: model.predict(tokenized)[0]
+    punctuate(samples[:500], wordIndex, predict, file)
 
 def punctuateFile(file):
     cleanFile = cleanData(file)
-    sampledFile = cleanFile + ".sampled"
     labels, samples = sampleData(10000000, cleanFile, False, 1)
     wordIndex = loadWordIndex()
-    model = createModel()
-    model.load_weights(KERAS_WEIGHTS_FILE)
     punctuatedFile = file + '.punct'
-    punctuate(samples, wordIndex, model, punctuatedFile)
+    import tensorflow as tf
+    from tensorflow import import_graph_def
+    from tensorflow.python.platform import gfile
+    with tf.Session() as sess:
+        with gfile.FastGFile(os.path.join(MODEL_DATA_DIR, "freezed.pb"),'rb') as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+        sess.graph.as_default()
+        import_graph_def(graph_def)
+        x = sess.graph.get_tensor_by_name("import/embedding_1_input:0")
+        predict = lambda tokenized: sess.run("import/dense_1/Softmax:0", {x: tokenized})[0]
+        punctuate(samples, wordIndex, predict, punctuatedFile)
 
 
-def punctuate(samples, wordIndex, model, punctuatedFilePrefix):
+def punctuate(samples, wordIndex, predict, punctuatedFilePrefix):
     firstSample = samples[0].split(' ')
     lastSample = samples[len(samples) - 1].split(' ')
     filler = []
@@ -390,7 +399,7 @@ def punctuate(samples, wordIndex, model, punctuatedFilePrefix):
         for sample in samples:
             sequences = texts_to_sequences(wordIndex, [sample], MAX_NB_WORDS)
             tokenized = pad_sequences(sequences, maxlen=WORDS_PER_SAMPLE_SIZE)
-            preds = list(model.predict(tokenized)[0])
+            preds = list(predict(tokenized))
             index = preds.index(max(preds))
             punctuatedWord = sample.split(' ')[DETECTION_INDEX]
             word = DOT_LIKE_REGEX.sub('', punctuatedWord).lower()
@@ -516,7 +525,7 @@ def testFreezed():
     from tensorflow import import_graph_def
     from tensorflow.python.platform import gfile
     with tf.Session() as sess:
-        with gfile.FastGFile(os.path.join(MODEL_DATA_DIR, "output_graph.pb"),'rb') as f:
+        with gfile.FastGFile(os.path.join(MODEL_DATA_DIR, "freezed.pb"),'rb') as f:
             graph_def = tf.GraphDef()
             graph_def.ParseFromString(f.read())
         sess.graph.as_default()
@@ -654,7 +663,7 @@ def main():
     # model = createModel(wordIndex)
     # trainModel(model, xTrain, yTrain, xVal, yVal, dataFile + ".clean.samples")
     # test(dataFile + ".clean.samples.test")
-    # punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
+    punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
     # saveWithSavedModel()
     # freeze()
