@@ -1,4 +1,4 @@
-#!/home/ubuntu/anaconda3/bin/python
+#!/usr/bin/env python
 
 '''
 GloVe embedding data can be found at:
@@ -41,7 +41,7 @@ GLOVE_DIR = os.path.join(BASE_DIR, 'glove.6B')
 EURO_PARL_DIR = os.path.join(BASE_DIR, 'europarl')
 NEWS_DIR = os.path.join(BASE_DIR, 'training-monolingual-newsshuffled')
 PUNCTUATOR_DIR = os.path.join(BASE_DIR, 'punctuator')
-MODEL_DATA_DIR = "model-data"
+MODEL_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "model-data")
 TMP_DIR = "tmp"
 KERAS_WEIGHTS_FILE = os.path.join(MODEL_DATA_DIR, "model")
 DOT_LIKE = ',;.!?'
@@ -622,6 +622,25 @@ def writeTensorflowDashboardLog():
         writer.flush()
         writer.close()
 
+def halucinate():
+    wordIndex = loadWordIndex()
+    model = createModel()
+    model.load_weights(KERAS_WEIGHTS_FILE)
+    bestPred = 0
+    bestSample = None
+    for i in range(0, 100000):
+        sample = np.random.randint(0, 20000, (1,30))
+        preds = list(model.predict(sample)[0])
+        if preds[1] > bestPred:
+            bestSample = sample
+            bestPred = preds[1]
+    print(bestPred)
+    for token in bestSample[0]:
+        for key, value in wordIndex.items():
+            if value == token:
+                print(key, end=" ")
+
+
 
 def main():
     dataFile = os.path.join(NEWS_DIR, 'news.2011.en.shuffled')
@@ -636,11 +655,12 @@ def main():
     # trainModel(model, xTrain, yTrain, xVal, yVal, dataFile + ".clean.samples")
     # test(dataFile + ".clean.samples.test")
     # punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
-    punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
+    # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
     # saveWithSavedModel()
     # freeze()
     # testFreezed()
     # writeTensorflowDashboardLog()
+    # halucinate()
     sys.stderr.write("Done")
 
 if len(sys.argv) == 2:
