@@ -68,15 +68,14 @@ def cleanData(inputFile=os.path.join(EURO_PARL_DIR, 'europarl-v7.en')):
     sys.stderr.write("Cleaning data " + inputFile + "\n")
     mappings = OrderedDict([
         (re.compile("['’]"), "'"),
-        (re.compile("' s([" + DOT_LIKE_AND_SPACE + "])"), "'s\g<1>"),
+        # (re.compile("' s([" + DOT_LIKE_AND_SPACE + "])"), "'s\g<1>"), # Removes strange text mistake pattern in europarl data.
         (re.compile("n't"), " n't"),
-        (re.compile(" '([^" + DOT_LIKE + "']*)'"), ' \g<1>'),
-        (re.compile("'([^t])"), " '\g<1>"),
-        (re.compile('\([^)]*\)'), ''),
-        (re.compile('[-—]'), ' '),
-        (re.compile('[^a-z0-9A-Z\',\.?! ]'), ''),
-        (re.compile('^$|^\.$'), ''),
-        (re.compile('.*Resumption of the session.*|.*VOTE.*|^Agenda$.*report[ ]*$'), ''),
+        #(re.compile(" '([^" + DOT_LIKE + "']*)'"), '. \g<1>.'), # Remove quoting apostrophes.
+        (re.compile("'([^t])"), " '\g<1>"), # Separate tokens like "'s" "'ll" and so on.
+        #(re.compile('\([^)]*\)'), ''), # Removes bracketed.
+        (re.compile('[-—]'), ' '), # Dash to space.
+        (re.compile('[^a-z0-9A-Z\',\.?! ]'), ''), # Other unknown to nothing.
+        # (re.compile('^$|^\.$'), ''), # Removes empty line.
     ])
     cleanFile = inputFile + '.clean'
     regexProcess(mappings, inputFile, cleanFile)
