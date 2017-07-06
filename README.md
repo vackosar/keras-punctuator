@@ -4,6 +4,14 @@ Is a small experimental project to punctuate text using a embedding layer, singl
 
 This project is being used in practice in my Android app Youtube Reader: [https://github.com/vackosar/youtube-reader](https://github.com/vackosar/youtube-reader).
 
+## Usage
+
+Python script can be used as a standalone punctuation tool in following way:
+ 
+``` ./punctuator.py file```
+
+Execution requires Tensorflow, Keras and Numpy installed.
+
 ## Inspirational Project
 
 Punctuator 2 by Ottokar Tilk at: https://github.com/ottokart/punctuator2

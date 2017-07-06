@@ -38,7 +38,6 @@ import keras.backend as K
 
 BASE_DIR = '/data'
 GLOVE_DIR = os.path.join(BASE_DIR, 'glove.6B')
-EURO_PARL_DIR = os.path.join(BASE_DIR, 'europarl')
 NEWS_DIR = os.path.join(BASE_DIR, 'training-monolingual-newsshuffled')
 PUNCTUATOR_DIR = os.path.join(BASE_DIR, 'punctuator')
 MODEL_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "model-data")
@@ -64,7 +63,7 @@ SAVE_SAMPLED = False
 # 2^13 = 8192
 VOCAB_SIZE = 8192
 
-def cleanData(inputFile=os.path.join(EURO_PARL_DIR, 'europarl-v7.en')):
+def cleanData(inputFile):
     sys.stderr.write("Cleaning data " + inputFile + "\n")
     mappings = OrderedDict([
         (re.compile("['’]"), "'"),
@@ -102,8 +101,8 @@ def regexProcess(mappings, inputFile, outputFile):
     return outputFile
 
 def sampleData(
-        sampleCount=3000000,
-        inputFile=os.path.join(EURO_PARL_DIR, "europarl-v7.en.clean"),
+        sampleCount,
+        inputFile,
         weighted=True,
         testPercentage=0.8):
     import itertools
@@ -182,7 +181,7 @@ def sampleData(
     return labels, samples
 
 
-def loadSamples(samplesCount, source=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.clean.samples')):
+def loadSamples(samplesCount, source):
     sys.stderr.write('Loading maximum ' + str(samplesCount) + ' samples from ' + source + "\n")
     with open(source, 'r', encoding="utf8") as input:
         samples = []
@@ -346,7 +345,7 @@ def trainModel(model, xTrain, yTrain, xVal, yVal, filePrefix):
     return model
 
 
-def test(file=os.path.join(EURO_PARL_DIR, 'europarl-v7.en.samples.test')):
+def test(file):
     labels, samples = loadSamples(100000, file)
     wordIndex = loadWordIndex()
     model = createModel()
@@ -662,8 +661,8 @@ def main():
     # model = createModel(wordIndex)
     # trainModel(model, xTrain, yTrain, xVal, yVal, dataFile + ".clean.samples")
     # test(dataFile + ".clean.samples.test")
-    punctuateFile(os.path.join(EURO_PARL_DIR, 'advice.txt'))
-    # punctuateFile(os.path.join(EURO_PARL_DIR, 'musk.txt'))
+    punctuateFile(os.path.join(NEWS_DIR, 'advice.txt'))
+    # punctuateFile(os.path.join(NEWS_DIR, 'musk.txt'))
     # saveWithSavedModel()
     # freeze()
     # testFreezed()
