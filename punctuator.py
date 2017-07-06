@@ -646,6 +646,8 @@ def halucinate():
         for key, value in wordIndex.items():
             if value == token:
                 print(key, end=" ")
+    # Last result: 0.905726 dominance four adversity routine hold replies unsurprisingly belly imagined affirmed twice vaccine blatantly burgers rest competitions errands intimacy doing rams destruction reconciliation cia 90 groceries wasting license versus wk4 laugh Done
+
 
 
 
@@ -667,7 +669,7 @@ def main():
     # freeze()
     # testFreezed()
     # writeTensorflowDashboardLog()
-    halucinate()
+    # halucinate()
     sys.stderr.write("Done")
 
 if len(sys.argv) == 2:
