@@ -414,9 +414,9 @@ def punctuate(samples, wordIndex, predict, punctuatedFilePrefix):
 
     processed = punctuatedFile + '.proc.txt'
     postProcess(punctuatedFile, processed)
-    with open(processed, encoding="utf8") as input:
-        for fullLine in input:
-            print(fullLine)
+    # with open(processed, encoding="utf8") as input:
+    #     for fullLine in input:
+    #         print(fullLine)
 
 
 def saveWithSavedModel():
@@ -635,7 +635,7 @@ def halucinate():
     model.load_weights(KERAS_WEIGHTS_FILE)
     bestPred = 0
     bestSample = None
-    for i in range(0, 100000):
+    for i in range(0, 1000000):
         sample = np.random.randint(0, 20000, (1,30))
         preds = list(model.predict(sample)[0])
         if preds[1] > bestPred:
@@ -661,13 +661,13 @@ def main():
     # model = createModel(wordIndex)
     # trainModel(model, xTrain, yTrain, xVal, yVal, dataFile + ".clean.samples")
     # test(dataFile + ".clean.samples.test")
-    punctuateFile(os.path.join(NEWS_DIR, 'advice.txt'))
+    # punctuateFile(os.path.join(NEWS_DIR, 'advice.txt'))
     # punctuateFile(os.path.join(NEWS_DIR, 'musk.txt'))
     # saveWithSavedModel()
     # freeze()
     # testFreezed()
     # writeTensorflowDashboardLog()
-    # halucinate()
+    halucinate()
     sys.stderr.write("Done")
 
 if len(sys.argv) == 2:

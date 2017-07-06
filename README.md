@@ -10,6 +10,8 @@ Python script can be used as a standalone punctuation tool in following way:
  
 ``` ./punctuator.py file```
 
+The program will produce several output files into your working directory. The final output file is named ```<file>.txt.punct.punct.proc.txt```.
+
 Execution requires Tensorflow, Keras and Numpy installed.
 
 ## Inspirational Project
