@@ -73,14 +73,17 @@ I am  not confident in Recall and F Score measures, but Precision one is accurat
 
 ### Examples
 
-Original Piece Of Test Data:
+#### News Commentary Test Data
+Original:
 > their lives in Spanish and United States history classes. Vice President Joseph R. Biden Jr. discusses a myriad of foreign and domestic issues and Justice Elena Kagan breaks her silence. The book on Manning says teams must pressure him to beat him. Times Reader 2.0 Try it FREE for 2 full weeks. New discoveries in the Mush Valley in Ethiopia include 22 million year old fossils of mammals as well as evidence of leaf consumption by insects. And, Please, No Shirtless Shots. A Room for Debate forum on why the shootings in Arizona have not led to calls for more gun control. Letters Mementos or Mess?
 
-Punctuated Piece Of Test Data:
+Punctuated:
 > Their lives in spanish and united states history classes. Vice president joseph r. Biden jr. Jr. Discusses a myriad of foreign and domestic issues and justice elena kagan breaks her silence. The book on manning. Says teams must pressure him to beat him. Times reader 20. Try it free for 2 full weeks. New discoveries in the mush valley in ethiopia include 22 million year old fossils of mammals as well as evidence of leaf consumption by insects and please no shirtless shots. A room for debate forum on why the shootings in arizona have not led to calls for more gun control. Letters mementos or mess 
 
-Original Elon Musk Interview Sample:
+#### Musk Interview
+
+Original:
 > Well, this was when I was six, so the memory is a little fuzzy at this point. But as I recall, I was grounded for some reason. I don’t know why but I felt it was unjust and I really wanted to go to this party, my cousin’s party, who was five…a kids’ party. So at first, I was going to take my bike and I told my mom this, which was a mistake and she told me some story about how you needed a license for a bike and the police would stop me. So I wasn’t 100% sure if that was true or not, but I thought I’d better walk just in case. I sort of thought I knew the way, but it was clear across town 10 or 12 miles really quite far, further than I realized actually…So I just started walking to my cousin’s house. It took me about four hours and just as my mom was leaving the party with my brother and sister, she saw me walking down the road and freaked out. I saw she saw me, so I then sprinted to my cousin’s house – I was just about two blocks away – and climbed a tree and refused to come down.
 
-Punctuated Elon Musk Interview Youtube captions:
+Punctuated:
 > Well this was when i was six. So the memory is a little fuzzy fuzzy at this point. But as i recall i was grounded for some reason. In't know why but i felt it was unjust and i really wanted to go to this party. My cousin's party who was five a kids' party so at first i was going to take my bike and i told my mom this which was a mistake and she told me some story about how you needed a license for a bike and the police would stop me so i wasn't 100 sure if that was true or not. But i thought i'd better walk just in case. I sort of thought i knew the way. But it was clear across town 10 or 12 miles really quite far further than i realized actually so i just started walking to my cousin's house. It took me about four hours and just as my mom was leaving the party with my brother and sister. She saw me walking down the road and freaked out. I saw she saw me so i then sprinted to my cousin's house. I was just about two blocks away and climbed a tree and refused to come down
