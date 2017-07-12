@@ -73,7 +73,7 @@ def cleanData(inputFile):
         (re.compile("'([^t])"), " '\g<1>"), # Separate tokens like "'s" "'ll" and so on.
         #(re.compile('\([^)]*\)'), ''), # Removes bracketed.
         (re.compile('[-—]'), ' '), # Dash to space.
-        (re.compile('[^a-z0-9A-Z\',\.?! ]'), ''), # Other unknown to nothing.
+        (re.compile('[^a-z0-9A-Z\',\.?! ]'), ' '), # Other unknown to space.
         # (re.compile('^$|^\.$'), ''), # Removes empty line.
     ])
     cleanFile = inputFile + '.clean'
