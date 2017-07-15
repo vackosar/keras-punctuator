@@ -4,10 +4,7 @@ Is a small experimental project to punctuate text using a embedding layer, singl
 
 This project is being used in practice in my Android app Youtube Reader: [https://github.com/vackosar/youtube-reader](https://github.com/vackosar/youtube-reader).
 
-## Video Presentation
-[https://www.youtube.com/watch?v=w-w3QamQIKY](https://www.youtube.com/watch?v=w-w3QamQIKY)
-
-[![Youtube](https://img.youtube.com/vi/w-w3QamQIKY/0.jpg)](https://www.youtube.com/watch?v=w-w3QamQIKY)
+[![Youtube](presentation-thumbnail.png)](https://www.youtube.com/watch?v=w-w3QamQIKY)
 
 ## Usage
 
