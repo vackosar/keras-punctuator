@@ -56,7 +56,7 @@ Regularization preventing over-learning is performed by the Dropout Algorithm.
 
 Last layer is simple two neuron fully or densely connected layer.
    
-Prediction output consisting of two float values is computed as softmax of activations of the two output neurons.
+Output consists of two float values is computed as softmax of activations of the two output neurons. The values represents prediction whether there is punctuation after 15th word.
 
 
 ### Full View
