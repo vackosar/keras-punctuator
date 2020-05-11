@@ -89,3 +89,6 @@ Original:
 
 Punctuated:
 > Well this was when i was six. So the memory is a little fuzzy fuzzy at this point. But as i recall i was grounded for some reason. In't know why but i felt it was unjust and i really wanted to go to this party. My cousin's party who was five a kids' party so at first i was going to take my bike and i told my mom this which was a mistake and she told me some story about how you needed a license for a bike and the police would stop me so i wasn't 100 sure if that was true or not. But i thought i'd better walk just in case. I sort of thought i knew the way. But it was clear across town 10 or 12 miles really quite far further than i realized actually so i just started walking to my cousin's house. It took me about four hours and just as my mom was leaving the party with my brother and sister. She saw me walking down the road and freaked out. I saw she saw me so i then sprinted to my cousin's house. I was just about two blocks away and climbed a tree and refused to come down
+
+## Licence
+MIT
