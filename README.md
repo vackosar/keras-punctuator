@@ -92,3 +92,8 @@ Punctuated:
 
 ## Licence
 MIT
+
+
+# Subscribe to My Blog
+
+[VaclavKosar.com](https://vaclavkosar.com)
